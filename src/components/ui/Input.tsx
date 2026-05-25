@@ -75,6 +75,7 @@ export const Input: React.FC<InputProps> = ({
           numberOfLines={numberOfLines}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          selectionColor={colors.primary}
           style={[
             styles.input,
             multiline && styles.multiline,
@@ -133,6 +134,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSize.md,
     paddingVertical: spacing.md,
+    backgroundColor: 'transparent',
+    // @ts-ignore - web only property
+    outlineStyle: 'none',
   },
   multiline: {
     minHeight: 100,

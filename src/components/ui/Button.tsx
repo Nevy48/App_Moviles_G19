@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants';
@@ -20,6 +21,7 @@ interface ButtonProps {
   loading?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  leftIcon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -31,6 +33,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   style,
   textStyle,
+  leftIcon,
 }) => {
   const isDisabled = disabled || loading;
 
@@ -59,15 +62,18 @@ export const Button: React.FC<ButtonProps> = ({
           {loading ? (
             <ActivityIndicator color={colors.white} />
           ) : (
-            <Text
-              style={[
-                styles.text,
-                styles[`${size}Text` as keyof typeof styles],
-                textStyle,
-              ]}
-            >
-              {title}
-            </Text>
+            <View style={styles.content}>
+              {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
+              <Text
+                style={[
+                  styles.text,
+                  styles[`${size}Text` as keyof typeof styles],
+                  textStyle,
+                ]}
+              >
+                {title}
+              </Text>
+            </View>
           )}
         </LinearGradient>
       </TouchableOpacity>
@@ -91,16 +97,19 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={variant === 'outline' ? colors.primary : colors.white} />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            variant === 'outline' && styles.outlineText,
-            styles[`${size}Text` as keyof typeof styles],
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+        <View style={styles.content}>
+          {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
+          <Text
+            style={[
+              styles.text,
+              variant === 'outline' && styles.outlineText,
+              styles[`${size}Text` as keyof typeof styles],
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -111,6 +120,14 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: borderRadius.md,
     overflow: 'hidden',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    marginRight: spacing.sm,
   },
   gradient: {
     paddingVertical: spacing.md,

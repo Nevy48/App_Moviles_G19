@@ -39,6 +39,8 @@ export const shadows = {
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
+    // @ts-ignore - web only
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.2)',
   },
   md: {
     shadowColor: '#000',
@@ -46,6 +48,8 @@ export const shadows = {
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    // @ts-ignore - web only
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
   },
   lg: {
     shadowColor: '#000',
@@ -53,5 +57,7 @@ export const shadows = {
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 8,
+    // @ts-ignore - web only
+    boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.4)',
   },
 } as const;
