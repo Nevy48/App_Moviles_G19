@@ -1,4 +1,18 @@
-export type SubjectStatus = 'pending' | 'in_progress' | 'approved';
+export type SubjectStatus = 'pending' | 'in_progress' | 'cursada' | 'approved';
+
+export type DurationType = 'A' | '1' | '2' | 'C'; // Annual, 1st quarter, 2nd quarter, Both
+
+export interface ScheduleDay {
+  nombre: string;
+  inicio: string;
+  fin: string;
+}
+
+export interface Commission {
+  id: string;
+  duration: DurationType;
+  dias: ScheduleDay[];
+}
 
 export interface University {
   id: string;
@@ -26,6 +40,50 @@ export interface Career {
   totalSubjects: number;
   years: number;
   subjects: Subject[];
+  tituloIntermedio?: string;
+  tituloFinal?: string;
+  plan?: string;
+}
+
+export interface CareerInfo {
+  id: string;
+  universidad: string;
+  nombre: string;
+  plan: string;
+  tituloIntermedio?: string;
+  tituloFinal?: string;
+  creditosTotales: number;
+}
+
+export interface CareerData {
+  careerInfo: CareerInfo;
+  ALL: RawSubject[];
+  SUBJECTS: RawSubject[];
+  ELECTIVAS: Record<number, RawSubject[]>;
+  getSubjectById: (id: string) => RawSubject | undefined;
+}
+
+// Raw subject from career data (before transformation to Subject)
+export interface RawSubject {
+  id: string;
+  num?: string;
+  name: string;
+  hours?: string;
+  level: number;
+  correlCursada: string[];
+  correlAprobada: string[];
+  comisiones?: Commission[];
+  isElectivePlaceholder?: boolean;
+  isSeminario?: boolean;
+  isOutdated?: boolean;
+  annualHours?: number;
+  targetHours?: number;
+}
+
+export interface CalendarDay {
+  fecha: string;
+  motivo: string;
+  tipo: 'feriado' | 'finales' | 'paro';
 }
 
 export interface Subject {
@@ -41,6 +99,17 @@ export interface Subject {
   tags: string[];
   correlatives: string[];
   description?: string;
+  hours?: string;
+  correlCursada?: string[];
+  correlAprobada?: string[];
+  comisiones?: Commission[];
+  isElectivePlaceholder?: boolean;
+  isSeminario?: boolean;
+  isOutdated?: boolean;
+  annualHours?: number;
+  targetHours?: number;
+  level?: number;
+  num?: string;
 }
 
 export interface SubjectWithStatus extends Subject {

@@ -3,30 +3,43 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
-import { SubjectStatus } from '@/types';
+import { ExtendedSubjectStatus } from '@/store/userStore';
 
 interface SubjectCardProps {
   name: string;
   code: string;
-  status: SubjectStatus;
+  status: ExtendedSubjectStatus;
   year: number;
   semester: 1 | 2;
   credits: number;
   difficulty: number;
   professor?: string;
+  hours?: string;
+  correlCursada?: string[];
+  correlAprobada?: string[];
+  comisiones?: any[];
+  isElectivePlaceholder?: boolean;
+  isSeminario?: boolean;
   onPress?: () => void;
-  onStatusChange?: (status: SubjectStatus) => void;
+  onStatusChange?: (status: ExtendedSubjectStatus) => void;
+  canChangeTo?: ExtendedSubjectStatus[];
 }
 
-const statusColors: Record<SubjectStatus, [string, string]> = {
-  pending: ['#6B7280', '#4B5563'],
-  in_progress: ['#FBBF24', '#D97706'],
-  approved: ['#34D399', '#059669'],
+const statusConfig: Record<ExtendedSubjectStatus, { color: string; bgColor: string; textColor: string }> = {
+  disabled: { color: colors.textTertiary, bgColor: colors.inputBackground, textColor: colors.textTertiary },
+  available: { color: colors.primary, bgColor: colors.primary + '15', textColor: colors.primary },
+  pending: { color: colors.textSecondary, bgColor: colors.inputBackground, textColor: colors.textSecondary },
+  in_progress: { color: colors.warning, bgColor: colors.warning + '15', textColor: colors.warning },
+  cursada: { color: '#A78BFA', bgColor: 'rgba(167, 139, 250, 0.15)', textColor: '#A78BFA' },
+  approved: { color: colors.success, bgColor: colors.success + '15', textColor: colors.success },
 };
 
-const statusLabels: Record<SubjectStatus, string> = {
+const statusLabels: Record<ExtendedSubjectStatus, string> = {
+  disabled: 'Bloqueada',
+  available: 'Disponible',
   pending: 'Pendiente',
   in_progress: 'Cursando',
+  cursada: 'Cursada',
   approved: 'Aprobada',
 };
 
@@ -36,101 +49,114 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   status,
   year,
   semester,
-  credits,
-  difficulty,
-  professor,
+  hours,
+  isElectivePlaceholder,
+  isSeminario,
   onPress,
   onStatusChange,
+  canChangeTo = [],
 }) => {
-  const statusColor = statusColors[status];
+  const config = statusConfig[status];
+  const isDisabled = status === 'disabled';
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.8}
-      style={styles.container}
+      activeOpacity={isDisabled ? 1 : 0.8}
+      style={[styles.container, isDisabled && styles.containerDisabled]}
     >
-      <View style={styles.header}>
-        <View style={styles.codeContainer}>
-          <Text style={styles.code}>{code}</Text>
+      {/* Left colored bar indicating status */}
+      <View style={[styles.statusBar, { backgroundColor: config.color }]} />
+
+      <View style={styles.content}>
+        {/* Top row: code + status badge */}
+        <View style={styles.topRow}>
+          <Text style={[styles.code, { color: isDisabled ? colors.textTertiary : colors.textSecondary }]}>
+            {code}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: config.bgColor }]}>
+            <Text style={[styles.statusText, { color: config.textColor }]}>
+              {statusLabels[status]}
+            </Text>
+          </View>
         </View>
-        <LinearGradient
-          colors={statusColor}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.statusBadge}
-        >
-          <Text style={styles.statusText}>{statusLabels[status]}</Text>
-        </LinearGradient>
+
+        {/* Subject name - more prominent */}
+        <Text style={[styles.name, isDisabled && styles.nameDisabled]} numberOfLines={2}>
+          {name}
+        </Text>
+
+        {/* Hours - important info */}
+        {hours && (
+          <Text style={styles.hours}>{hours}</Text>
+        )}
+
+        {/* Badges */}
+        {(isElectivePlaceholder || isSeminario) && (
+          <View style={styles.badgesRow}>
+            {isElectivePlaceholder && (
+              <View style={[styles.badge, styles.electiveBadge]}>
+                <Text style={styles.badgeText}>Electivas</Text>
+              </View>
+            )}
+            {isSeminario && (
+              <View style={[styles.badge, styles.seminarioBadge]}>
+                <Text style={styles.badgeText}>Seminario</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Year info */}
+        <Text style={styles.yearInfo}>{year}° Año</Text>
+
+        {/* Actions - only show if not disabled and has available transitions */}
+        {!isDisabled && onStatusChange && canChangeTo.length > 0 && (
+          <View style={styles.actionsContainer}>
+            {canChangeTo.includes('pending') && (
+              <TouchableOpacity
+                style={[styles.actionButton, status === 'pending' && styles.activeAction]}
+                onPress={() => onStatusChange('pending')}
+              >
+                <Text style={[styles.actionText, status === 'pending' && styles.activeActionText]}>Pendiente</Text>
+              </TouchableOpacity>
+            )}
+            {canChangeTo.includes('in_progress') && (
+              <TouchableOpacity
+                style={[styles.actionButton, status === 'in_progress' && styles.activeAction]}
+                onPress={() => onStatusChange('in_progress')}
+              >
+                <Text style={[styles.actionText, status === 'in_progress' && styles.activeActionText]}>Cursando</Text>
+              </TouchableOpacity>
+            )}
+            {canChangeTo.includes('cursada') && (
+              <TouchableOpacity
+                style={[styles.actionButton, status === 'cursada' && styles.activeAction]}
+                onPress={() => onStatusChange('cursada')}
+              >
+                <Text style={[styles.actionText, status === 'cursada' && styles.activeActionText]}>Cursada</Text>
+              </TouchableOpacity>
+            )}
+            {canChangeTo.includes('approved') && (
+              <TouchableOpacity
+                style={[styles.actionButton, status === 'approved' && styles.activeAction]}
+                onPress={() => onStatusChange('approved')}
+              >
+                <Text style={[styles.actionText, status === 'approved' && styles.activeActionText]}>Aprobada</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Disabled overlay message */}
+        {isDisabled && (
+          <Text style={styles.disabledText}>
+            Completá correlativas para desbloquear
+          </Text>
+        )}
       </View>
-
-      <Text style={styles.name} numberOfLines={2}>
-        {name}
-      </Text>
-
-      <View style={styles.footer}>
-        <View style={styles.infoContainer}>
-          <Text style={styles.info}>{year}° Año</Text>
-          <Text style={styles.info}>|</Text>
-          <Text style={styles.info}>{semestreLabel(semester)}</Text>
-        </View>
-
-        <View style={styles.creditsContainer}>
-          <Text style={styles.credits}>{credits} créditos</Text>
-        </View>
-      </View>
-
-      <View style={styles.difficultyContainer}>
-        {renderDifficulty(difficulty)}
-      </View>
-
-      {professor && (
-        <Text style={styles.professor}>Prof: {professor}</Text>
-      )}
-
-      {onStatusChange && (
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, status === 'pending' && styles.activeAction]}
-            onPress={() => onStatusChange('pending')}
-          >
-            <Text style={[styles.actionText, status === 'pending' && styles.activeActionText]}>Pendiente</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, status === 'in_progress' && styles.activeAction]}
-            onPress={() => onStatusChange('in_progress')}
-          >
-            <Text style={[styles.actionText, status === 'in_progress' && styles.activeActionText]}>Cursando</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, status === 'approved' && styles.activeAction]}
-            onPress={() => onStatusChange('approved')}
-          >
-            <Text style={[styles.actionText, status === 'approved' && styles.activeActionText]}>Aprobada</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </TouchableOpacity>
   );
-};
-
-const semestreLabel = (semester: 1 | 2) =>
-  semester === 1 ? '1° Cuatrimestre' : '2° Cuatrimestre';
-
-const renderDifficulty = (level: number) => {
-  const dots = [];
-  for (let i = 1; i <= 5; i++) {
-    dots.push(
-      <View
-        key={i}
-        style={[
-          styles.difficultyDot,
-          i <= level ? styles.difficultyDotActive : styles.difficultyDotInactive,
-        ]}
-      />
-    );
-  }
-  return dots;
 };
 
 const styles = StyleSheet.create({
@@ -139,92 +165,84 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    padding: spacing.md,
     marginBottom: spacing.md,
+    flexDirection: 'row',
+    overflow: 'hidden',
   },
-  header: {
+  containerDisabled: {
+    opacity: 0.6,
+  },
+  statusBar: {
+    width: 4,
+  },
+  content: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  codeContainer: {
-    backgroundColor: colors.inputBackground,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
   },
   code: {
-    color: colors.primary,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
+    letterSpacing: 0.5,
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 2,
     borderRadius: borderRadius.full,
   },
   statusText: {
-    color: colors.white,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
   },
   name: {
     color: colors.textPrimary,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
-    marginBottom: spacing.sm,
+    lineHeight: 22,
+    marginBottom: spacing.xs,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+  nameDisabled: {
+    color: colors.textTertiary,
   },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  info: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-  },
-  creditsContainer: {
-    backgroundColor: colors.primary + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  credits: {
+  hours: {
     color: colors.primary,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
+    marginBottom: spacing.xs,
   },
-  difficultyContainer: {
+  badgesRow: {
     flexDirection: 'row',
     gap: spacing.xs,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  difficultyDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
   },
-  difficultyDotActive: {
-    backgroundColor: colors.warning,
+  electiveBadge: {
+    backgroundColor: colors.primary + '20',
   },
-  difficultyDotInactive: {
-    backgroundColor: colors.inputBorder,
+  seminarioBadge: {
+    backgroundColor: colors.warning + '20',
   },
-  professor: {
+  badgeText: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+  },
+  yearInfo: {
     color: colors.textTertiary,
-    fontSize: fontSize.sm,
-    marginBottom: spacing.sm,
+    fontSize: fontSize.xs,
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
@@ -247,5 +265,11 @@ const styles = StyleSheet.create({
   },
   activeActionText: {
     color: colors.white,
+  },
+  disabledText: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
 });

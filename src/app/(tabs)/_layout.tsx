@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
 import { colors } from '@/constants';
-import { Home, User } from 'lucide-react';
+import { Home, User, BookMarked } from 'lucide-react';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.cardBorder,
@@ -17,23 +18,26 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: colors.primary as string,
         tabBarInactiveTintColor: colors.textTertiary as string,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Inicio',
+          title: '',
           tabBarIcon: ({ color, size }) => <Home size={size} color={color as string} />,
+        }}
+      />
+      <Tabs.Screen
+        name="plan"
+        options={{
+          title: '',
+          tabBarIcon: ({ color, size }) => <BookMarked size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: '',
           tabBarIcon: ({ color, size }) => <User size={size} color={color as string} />,
         }}
       />

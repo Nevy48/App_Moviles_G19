@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   SectionList,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -15,43 +16,63 @@ import {
   BookOpen,
   Clock,
   CheckCircle,
-  TrendingUp,
   ChevronRight,
-  Award,
+  AlertCircle,
+  X,
 } from 'lucide-react';
-import { Card, SubjectCard, ProgressBar, StatsCard } from '@/components/ui';
+import { Card, SubjectCard } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
 import { useUserStore, useAcademicStats, useSubjectsByYear } from '@/store/userStore';
-import { SubjectStatus } from '@/types';
+import { ExtendedSubjectStatus } from '@/store/userStore';
 
 const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
 
 export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
-  const { user, selectedCareer, selectedUniversity, updateSubjectStatus } = useUserStore();
+  const { user, selectedCareer, updateSubjectStatus, subjects } = useUserStore();
   const stats = useAcademicStats();
   const subjectsByYear = useSubjectsByYear();
 
+  const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    // Mock refresh
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const handleStatusChange = (subjectId: string, status: SubjectStatus) => {
-    updateSubjectStatus(subjectId, status);
+  const handleSubjectPress = (subject: any) => {
+    setSelectedSubject(subject);
+    setShowDetailModal(true);
+  };
+
+  const handleStatusChange = (subjectId: string, status: ExtendedSubjectStatus) => {
+    updateSubjectStatus(subjectId, status as any);
+    setShowDetailModal(false);
   };
 
   const years = Object.keys(subjectsByYear)
     .map(Number)
     .sort((a, b) => a - b);
 
-  const sections = years.map((year) => ({
-    title: `${year}° Año`,
-    year,
-    data: subjectsByYear[year] || [],
-  }));
+  const sections = years
+    .map((year) => ({
+      title: `${year}° Año`,
+      year,
+      data: (subjectsByYear[year] || []).filter(s => s.status === 'in_progress'),
+    }))
+    .filter(section => section.data.length > 0);
+
+  const getSubjectById = (id: string) => subjects.find(s => s.id === id);
+
+  const getSubjectStatus = (id: string): ExtendedSubjectStatus => {
+    for (const year of Object.values(subjectsByYear)) {
+      const subject = year.find(s => s.id === id);
+      if (subject) return subject.status;
+    }
+    return 'disabled';
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -123,42 +144,18 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <View style={styles.progressStat}>
-                    <BookOpen size={16} color={colors.textTertiary} />
+                    <AlertCircle size={16} color={colors.textTertiary} />
                     <Text style={styles.progressStatText}>
-                      {stats.pending} pendientes
+                      {stats.disabled} bloqueadas
                     </Text>
                   </View>
                 </View>
               </LinearGradient>
             </Card>
 
-            {/* Quick Stats */}
-            <View style={styles.statsRow}>
-              <StatsCard
-                title="Créditos"
-                value={stats.completedCredits}
-                subtitle={`de ${stats.totalCredits} totales`}
-                icon={<Award size={16} color={colors.primary} />}
-                progress={Math.round((stats.completedCredits / stats.totalCredits) * 100)}
-                progressLabel="Completado"
-                gradientColors={[colors.warning + '20', colors.warning + '05']}
-              />
-              <StatsCard
-                title="Rendimiento"
-                value={stats.percentage + '%'}
-                subtitle="Tasa de aprobación"
-                icon={<TrendingUp size={16} color={colors.success} />}
-                gradientColors={[colors.success + '20', colors.success + '05']}
-              />
-            </View>
-
             {/* Career Selector */}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Materias por Año</Text>
-              <TouchableOpacity style={styles.filterButton}>
-                <Text style={styles.filterButtonText}>Filtrar</Text>
-                <ChevronRight size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Materias que estoy cursando</Text>
             </View>
           </>
         )}
@@ -175,13 +172,18 @@ export default function HomeScreen() {
             name={item.name}
             code={item.code}
             status={item.status}
-            year={item.year}
+            year={item.level || item.year}
             semester={item.semester}
             credits={item.credits}
             difficulty={item.difficulty}
             professor={item.professor}
-            onPress={() => {}}
-            onStatusChange={(status) => handleStatusChange(item.id, status)}
+            hours={item.hours}
+            correlCursada={item.correlCursada}
+            correlAprobada={item.correlAprobada}
+            isElectivePlaceholder={item.isElectivePlaceholder}
+            isSeminario={item.isSeminario}
+            onPress={() => handleSubjectPress(item)}
+            canChangeTo={item.canChangeTo}
           />
         )}
         ListEmptyComponent={
@@ -194,9 +196,159 @@ export default function HomeScreen() {
           </View>
         }
       />
+
+      {/* Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selectedSubject && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View>
+                    <Text style={styles.modalCode}>{selectedSubject.code}</Text>
+                    <Text style={styles.modalTitle}>{selectedSubject.name}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <X size={24} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  {/* Hours */}
+                  {selectedSubject.hours && (
+                    <View style={styles.infoRow}>
+                      <Clock size={16} color={colors.textSecondary} />
+                      <Text style={styles.infoText}>{selectedSubject.hours}</Text>
+                    </View>
+                  )}
+
+                  {/* Correlatividades */}
+                  {renderCorrelatividades(selectedSubject, getSubjectById, getSubjectStatus)}
+
+                  {/* Actions */}
+                  <View style={styles.actionsSection}>
+                    <Text style={styles.actionsTitle}>Cambiar estado</Text>
+                    <View style={styles.actionsGrid}>
+                      {selectedSubject.canChangeTo?.includes('pending') && (
+                        <TouchableOpacity
+                          style={[styles.actionButton, selectedSubject.status === 'pending' && styles.actionButtonActive]}
+                          onPress={() => handleStatusChange(selectedSubject.id, 'pending')}
+                        >
+                          <Text style={[styles.actionButtonText, selectedSubject.status === 'pending' && styles.actionButtonTextActive]}>
+                            Pendiente
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {selectedSubject.canChangeTo?.includes('cursada') && (
+                        <TouchableOpacity
+                          style={[styles.actionButton, selectedSubject.status === 'cursada' && styles.actionButtonActive]}
+                          onPress={() => handleStatusChange(selectedSubject.id, 'cursada')}
+                        >
+                          <Text style={[styles.actionButtonText, selectedSubject.status === 'cursada' && styles.actionButtonTextActive]}>
+                            Cursada
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {selectedSubject.canChangeTo?.includes('approved') && (
+                        <TouchableOpacity
+                          style={[styles.actionButton, selectedSubject.status === 'approved' && styles.actionButtonActive]}
+                          onPress={() => handleStatusChange(selectedSubject.id, 'approved')}
+                        >
+                          <Text style={[styles.actionButtonText, selectedSubject.status === 'approved' && styles.actionButtonTextActive]}>
+                            Aprobada
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+function renderCorrelatividades(subject: any, getSubjectById: (id: string) => any, getSubjectStatus: (id: string) => ExtendedSubjectStatus) {
+  const cursadasReq = subject.correlCursada || [];
+  const aprobadasReq = subject.correlAprobada || [];
+
+  if (cursadasReq.length === 0 && aprobadasReq.length === 0) {
+    return (
+      <View style={styles.correlSection}>
+        <Text style={styles.correlTitle}>Sin correlatividades</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.correlSection}>
+      {cursadasReq.length > 0 && (
+        <>
+          <Text style={styles.correlTitle}>Requiere estar cursando:</Text>
+          {cursadasReq.map((reqId: string) => {
+            const reqSubject = getSubjectById(reqId);
+            const reqStatus = getSubjectStatus(reqId);
+            const isOk = ['cursada', 'approved', 'in_progress'].includes(reqStatus);
+            return (
+              <View key={reqId} style={styles.correlItem}>
+                {isOk ? (
+                  <CheckCircle size={16} color={colors.success} />
+                ) : (
+                  <AlertCircle size={16} color={colors.error} />
+                )}
+                <Text style={[styles.correlName, !isOk && styles.correlNamePending]}>
+                  {reqSubject?.name || reqId}
+                </Text>
+                <Text style={[styles.correlStatus, { color: isOk ? colors.success : colors.textTertiary }]}>
+                  {isOk ? 'OK' : 'Pendiente'}
+                </Text>
+              </View>
+            );
+          })}
+        </>
+      )}
+
+      {aprobadasReq.length > 0 && (
+        <>
+          <Text style={[styles.correlTitle, { marginTop: spacing.sm }]}>Requiere tener aprobada:</Text>
+          {aprobadasReq.map((reqId: string) => {
+            const reqSubject = getSubjectById(reqId);
+            const reqStatus = getSubjectStatus(reqId);
+            const isOk = reqStatus === 'approved';
+            return (
+              <View key={reqId} style={styles.correlItem}>
+                {isOk ? (
+                  <CheckCircle size={16} color={colors.success} />
+                ) : (
+                  <AlertCircle size={16} color={colors.error} />
+                )}
+                <Text style={[styles.correlName, !isOk && styles.correlNamePending]}>
+                  {reqSubject?.name || reqId}
+                </Text>
+                <Text style={[styles.correlStatus, { color: isOk ? colors.success : colors.textTertiary }]}>
+                  {isOk ? 'OK' : 'Pendiente'}
+                </Text>
+              </View>
+            );
+          })}
+        </>
+      )}
+    </View>
+  );
+}
+
+import { ProgressBar } from '@/components/ui/ProgressBar';
 
 const styles = StyleSheet.create({
   container: {
@@ -277,11 +429,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -292,15 +439,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     color: colors.textPrimary,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  filterButtonText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
   },
   yearHeader: {
     flexDirection: 'row',
@@ -336,5 +474,120 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  modalCode: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
+  },
+  modalTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+    maxWidth: '85%',
+  },
+  closeButton: {
+    padding: spacing.xs,
+  },
+  modalBody: {
+    padding: spacing.lg,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  infoText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  correlSection: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.inputBackground,
+    borderRadius: borderRadius.md,
+  },
+  correlTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  correlItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  correlName: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+  },
+  correlNamePending: {
+    color: colors.textTertiary,
+  },
+  correlStatus: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+  },
+  actionsSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  actionsTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  actionButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  actionButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  actionButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  actionButtonTextActive: {
+    color: colors.white,
   },
 });
