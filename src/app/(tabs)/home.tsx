@@ -87,6 +87,7 @@ export default function HomeScreen() {
   const [newScheduleEnd, setNewScheduleEnd] = useState(new Date(new Date().setHours(17, 0, 0, 0)));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  
 
   useFocusEffect(
     useCallback(() => {

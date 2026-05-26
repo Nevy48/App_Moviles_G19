@@ -1,37 +1,99 @@
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Mail,
-  User,
-  Building2,
-  GraduationCap,
   LogOut,
   Settings,
   ChevronRight,
-  Award,
   Clock,
   CheckCircle,
+  BookOpen,
+  X,
 } from 'lucide-react-native';
-import { Card, ProgressBar } from '@/components/ui';
 import { colors } from '@/constants';
-import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
-import { useUserStore, useAcademicStats } from '@/store/userStore';
+import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
+import { useUserStore } from '@/store/userStore';
 
-const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
+export type ExtendedSubjectStatus = 'disabled' | 'available' | 'pending' | 'in_progress' | 'cursada' | 'approved';
+
+const BASE_DUMMY_SUBJECT = {
+  id: 'placeholder-1',
+  name: 'Aplicaciones Móviles',
+  code: '001',
+  status: 'pending' as ExtendedSubjectStatus,
+  level: 1,
+  semester: 1,
+  credits: 4,
+  hours: '4 hs/sem',
+  correlCursada: [],
+  correlAprobada: [],
+  isElectivePlaceholder: false,
+  isSeminario: false,
+  canChangeTo: ['approved', 'cursada', 'in_progress', 'pending'] as ExtendedSubjectStatus[],
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, selectedUniversity, selectedCareer, logout } = useUserStore();
-  const stats = useAcademicStats();
+  const [subject, setSubject] = useState(BASE_DUMMY_SUBJECT);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadStatus = async () => {
+        try {
+          const savedStatus = await AsyncStorage.getItem('@materia_prueba_status');
+          if (savedStatus) {
+            setSubject(prev => ({ ...prev, status: savedStatus as ExtendedSubjectStatus }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      loadStatus();
+    }, [])
+  );
+
+  const getStatusColor = (status: ExtendedSubjectStatus) => {
+    switch (status) {
+      case 'approved': return colors.success;
+      case 'cursada': return colors.warning;
+      case 'in_progress': return colors.primary;
+      case 'pending': return colors.white;
+      case 'disabled': return colors.textTertiary;
+      default: return colors.white;
+    }
+  };
+
+  const getDummyStats = () => {
+    return {
+      approved: subject.status === 'approved' ? 1 : 0,
+      cursada: subject.status === 'cursada' ? 1 : 0,
+      inProgress: subject.status === 'in_progress' ? 1 : 0,
+      pending: subject.status === 'pending' ? 1 : 0,
+    };
+  };
+
+  const handleStatusChange = async (newStatus: ExtendedSubjectStatus) => {
+    setSubject({ ...subject, status: newStatus });
+    setShowDetailModal(false);
+    try {
+      await AsyncStorage.setItem('@materia_prueba_status', newStatus);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -51,25 +113,22 @@ export default function ProfileScreen() {
     );
   };
 
+  const avatarInitials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Perfil</Text>
         </View>
 
-        {/* Profile Card */}
-        <Card style={styles.profileCard}>
+        <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {user?.firstName?.[0]}
-                {user?.lastName?.[0]}
-              </Text>
+              <Text style={styles.avatarText}>{avatarInitials}</Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.userName}>
@@ -83,80 +142,53 @@ export default function ProfileScreen() {
 
           <View style={styles.profileDetails}>
             <View style={styles.detailItem}>
-              <Building2 size={18} color={colors.primary} />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Universidad</Text>
-                <Text style={styles.detailValue}>
-                  {selectedUniversity?.name || 'UTN'}
-                </Text>
-              </View>
+              <Text style={styles.detailLabel}>Universidad</Text>
+              <Text style={styles.detailValue}>
+                {selectedUniversity?.name || 'UTN'}
+              </Text>
             </View>
 
             <View style={styles.detailItem}>
-              <GraduationCap size={18} color={colors.primary} />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Carrera</Text>
-                <Text style={styles.detailValue}>
-                  {selectedCareer?.name || 'Ingeniería en Sistemas'}
-                </Text>
-              </View>
+              <Text style={styles.detailLabel}>Carrera</Text>
+              <Text style={styles.detailValue}>
+                {selectedCareer?.name || 'Ingeniería en Sistemas'}
+              </Text>
             </View>
           </View>
-        </Card>
+        </View>
 
-        {/* Academic Progress */}
-        <Text style={styles.sectionTitle}>Progreso Académico</Text>
-        <Card style={styles.progressCard}>
-          <View style={styles.progressItem}>
-            <View style={styles.progressIcon}>
-              <CheckCircle size={20} color={colors.success} />
-            </View>
-            <View style={styles.progressContent}>
-              <Text style={styles.progressLabel}>Materias Aprobadas</Text>
-              <Text style={styles.progressValue}>{stats.approved}</Text>
-            </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Progreso Académico</Text>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <View style={styles.statItem}>
+            <CheckCircle size={24} color={getStatusColor('approved')} />
+            <Text style={styles.statValue}>{getDummyStats().approved}</Text>
+            <Text style={styles.statLabel}>Aprobadas</Text>
           </View>
-
-          <View style={styles.progressDivider} />
-
-          <View style={styles.progressItem}>
-            <View style={styles.progressIcon}>
-              <Clock size={20} color={colors.warning} />
-            </View>
-            <View style={styles.progressContent}>
-              <Text style={styles.progressLabel}>Materias Cursando</Text>
-              <Text style={styles.progressValue}>{stats.inProgress}</Text>
-            </View>
+          <View style={styles.statItem}>
+            <BookOpen size={24} color={getStatusColor('in_progress')} />
+            <Text style={styles.statValue}>{getDummyStats().inProgress}</Text>
+            <Text style={styles.statLabel}>Cursando</Text>
           </View>
-
-          <View style={styles.progressDivider} />
-
-          <View style={styles.progressItem}>
-            <View style={styles.progressIcon}>
-              <Award size={20} color={colors.primary} />
-            </View>
-            <View style={styles.progressContent}>
-              <Text style={styles.progressLabel}>Créditos Obtenidos</Text>
-              <Text style={styles.progressValue}>{stats.completedCredits}</Text>
-            </View>
+          <View style={styles.statItem}>
+            <CheckCircle size={24} color={getStatusColor('cursada')} />
+            <Text style={styles.statValue}>{getDummyStats().cursada}</Text>
+            <Text style={styles.statLabel}>Cursadas</Text>
           </View>
-
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarHeader}>
-              <Text style={styles.progressBarLabel}>Progreso Total</Text>
-              <Text style={styles.progressBarPercentage}>{stats.percentage}%</Text>
-            </View>
-            <ProgressBar
-              percentage={stats.percentage}
-              showPercentage={false}
-              height={8}
-            />
+          <View style={styles.statItem}>
+            <Clock size={24} color={getStatusColor('pending')} />
+            <Text style={styles.statValue}>{getDummyStats().pending}</Text>
+            <Text style={styles.statLabel}>Pendientes</Text>
           </View>
-        </Card>
+        </View>
 
-        {/* Settings Section */}
-        <Text style={styles.sectionTitle}>Configuración</Text>
-        <Card padding="sm">
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Configuración</Text>
+        </View>
+
+        <View style={styles.menuCard}>
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <Settings size={20} color={colors.textSecondary} />
@@ -179,11 +211,107 @@ export default function ProfileScreen() {
             </View>
             <ChevronRight size={20} color={colors.textTertiary} />
           </TouchableOpacity>
-        </Card>
+        </View>
 
-        {/* App Version */}
         <Text style={styles.version}>Mi Estado Académico v1.0.0</Text>
       </ScrollView>
+
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalCode}>{subject.code}</Text>
+                <Text style={styles.modalTitle}>{subject.name}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDetailModal(false)}
+              >
+                <X size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.infoRow}>
+                <Clock size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>{subject.hours}</Text>
+              </View>
+
+              <View style={styles.correlSection}>
+                <Text style={styles.correlTitle}>Sin correlatividades</Text>
+              </View>
+
+              <View style={styles.actionsSection}>
+                <Text style={styles.actionsTitle}>Cambiar estado</Text>
+                <View style={styles.actionsGrid}>
+                  {subject.canChangeTo?.includes('approved') && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton, 
+                        subject.status === 'approved' && { backgroundColor: getStatusColor('approved'), borderColor: getStatusColor('approved') }
+                      ]}
+                      onPress={() => handleStatusChange('approved')}
+                    >
+                      <CheckCircle size={18} color={subject.status === 'approved' ? colors.white : getStatusColor('approved')} />
+                      <Text style={[styles.actionButtonText, subject.status === 'approved' && styles.actionButtonTextActive]}>
+                        Aprobada
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {subject.canChangeTo?.includes('cursada') && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton, 
+                        subject.status === 'cursada' && { backgroundColor: getStatusColor('cursada'), borderColor: getStatusColor('cursada') }
+                      ]}
+                      onPress={() => handleStatusChange('cursada')}
+                    >
+                      <CheckCircle size={18} color={subject.status === 'cursada' ? colors.white : getStatusColor('cursada')} />
+                      <Text style={[styles.actionButtonText, subject.status === 'cursada' && styles.actionButtonTextActive]}>
+                        Cursada
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {subject.canChangeTo?.includes('in_progress') && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton, 
+                        subject.status === 'in_progress' && { backgroundColor: getStatusColor('in_progress'), borderColor: getStatusColor('in_progress') }
+                      ]}
+                      onPress={() => handleStatusChange('in_progress')}
+                    >
+                      <BookOpen size={18} color={subject.status === 'in_progress' ? colors.white : getStatusColor('in_progress')} />
+                      <Text style={[styles.actionButtonText, subject.status === 'in_progress' && styles.actionButtonTextActive]}>
+                        Cursando
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {subject.canChangeTo?.includes('pending') && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton, 
+                        subject.status === 'pending' && { backgroundColor: getStatusColor('pending'), borderColor: getStatusColor('pending') }
+                      ]}
+                      onPress={() => handleStatusChange('pending')}
+                    >
+                      <Clock size={18} color={subject.status === 'pending' ? colors.background : getStatusColor('pending')} />
+                      <Text style={[styles.actionButtonText, subject.status === 'pending' && { color: colors.background }]}>
+                        Pendiente
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -202,10 +330,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
   },
   profileCard: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     marginBottom: spacing.lg,
   },
   profileHeader: {
@@ -223,7 +354,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
+    fontFamily: fontFamily.bold,
     color: colors.white,
   },
   profileInfo: {
@@ -231,11 +362,12 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
   },
   userEmail: {
     fontSize: fontSize.sm,
+    fontFamily: fontFamily.regular,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
@@ -248,96 +380,88 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailContent: {
-    marginLeft: spacing.md,
+    gap: spacing.xs,
   },
   detailLabel: {
     fontSize: fontSize.xs,
+    fontFamily: fontFamily.monoRegular,
     color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   detailValue: {
     fontSize: fontSize.md,
+    fontFamily: fontFamily.medium,
     color: colors.textPrimary,
-    fontWeight: fontWeight.medium,
+  },
+  sectionHeader: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
   },
-  progressCard: {
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
   },
-  progressItem: {
-    flexDirection: 'row',
+  statItem: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
   },
-  progressIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.inputBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  progressContent: {
-    flex: 1,
-  },
-  progressLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  progressValue: {
+  statValue: {
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
+    marginTop: spacing.xs,
   },
-  progressDivider: {
-    height: 1,
-    backgroundColor: colors.cardBorder,
+  statLabel: {
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.monoRegular,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  progressBarContainer: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
-  },
-  progressBarHeader: {
+
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  progressBarLabel: {
+  infoText: {
     fontSize: fontSize.sm,
+    fontFamily: fontFamily.regular,
     color: colors.textSecondary,
   },
-  progressBarPercentage: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.primary,
+  menuCard: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
   },
   menuItemText: {
     fontSize: fontSize.md,
+    fontFamily: fontFamily.medium,
     color: colors.textPrimary,
-    marginLeft: spacing.md,
   },
   logoutText: {
     color: colors.error,
@@ -349,7 +473,93 @@ const styles = StyleSheet.create({
   version: {
     textAlign: 'center',
     fontSize: fontSize.xs,
+    fontFamily: fontFamily.regular,
     color: colors.textTertiary,
+    marginTop: spacing.lg,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  modalCode: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.monoBold,
+    color: colors.primary,
+  },
+  modalTitle: {
+    fontSize: fontSize.xl,
+    fontFamily: fontFamily.bold,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+    maxWidth: '85%',
+  },
+  closeButton: {
+    padding: spacing.xs,
+  },
+  modalBody: {
+    padding: spacing.lg,
+  },
+  correlSection: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.inputBackground,
+    borderRadius: borderRadius.md,
+  },
+  correlTitle: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  actionsSection: {
     marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  actionsTitle: {
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  actionButtonText: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.medium,
+    color: colors.textSecondary,
+  },
+  actionButtonTextActive: {
+    color: colors.white,
   },
 });
