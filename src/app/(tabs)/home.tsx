@@ -431,7 +431,8 @@ export default function HomeScreen() {
                     <DateTimePicker
                       value={newEventDate}
                       mode="date"
-                      display="default"
+                      display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
+                      textColor={colors.textPrimary}
                       onChange={(event, selectedDate) => {
                         setShowDatePicker(Platform.OS === 'ios');
                         if (selectedDate) setNewEventDate(selectedDate);
@@ -498,8 +499,8 @@ export default function HomeScreen() {
                         <DateTimePicker
                           value={newScheduleStart}
                           mode="time"
-                          is24Hour={true}
-                          display="default"
+                          display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
+                          textColor={colors.textPrimary}
                           onChange={(event, selectedDate) => {
                             setShowStartPicker(Platform.OS === 'ios');
                             if (selectedDate) setNewScheduleStart(selectedDate);
@@ -518,8 +519,8 @@ export default function HomeScreen() {
                         <DateTimePicker
                           value={newScheduleEnd}
                           mode="time"
-                          is24Hour={true}
-                          display="default"
+                          display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
+                          textColor={colors.textPrimary}
                           onChange={(event, selectedDate) => {
                             setShowEndPicker(Platform.OS === 'ios');
                             if (selectedDate) setNewScheduleEnd(selectedDate);
