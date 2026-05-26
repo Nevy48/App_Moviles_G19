@@ -32,7 +32,11 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="light" />
-      <Stack />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
     </>
   );
 }
