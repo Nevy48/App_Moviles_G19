@@ -16,7 +16,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import {
   BookOpen,
   Clock,
@@ -472,60 +471,67 @@ export default function HomeScreen() {
 
                 <View style={styles.modalBody}>
                   <Text style={styles.inputLabel}>Día de la semana</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={newScheduleDay}
-                      onValueChange={(itemValue) => setNewScheduleDay(itemValue)}
-                      style={styles.picker}
-                      dropdownIconColor={colors.textPrimary}
-                    >
-                      <Picker.Item label="Lunes" value="Lunes" color={colors.textPrimary} />
-                      <Picker.Item label="Martes" value="Martes" color={colors.textPrimary} />
-                      <Picker.Item label="Miércoles" value="Miércoles" color={colors.textPrimary} />
-                      <Picker.Item label="Jueves" value="Jueves" color={colors.textPrimary} />
-                      <Picker.Item label="Viernes" value="Viernes" color={colors.textPrimary} />
-                      <Picker.Item label="Sábado" value="Sábado" color={colors.textPrimary} />
-                    </Picker>
+                  <View style={styles.daySelector}>
+                    {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day, index) => {
+                      const dayName = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][index];
+                      return (
+                        <TouchableOpacity
+                          key={day}
+                          style={[styles.dayBtn, newScheduleDay === dayName && styles.dayBtnActive]}
+                          onPress={() => setNewScheduleDay(dayName)}
+                        >
+                          <Text style={[styles.dayBtnText, newScheduleDay === dayName && styles.dayBtnTextActive]}>{day}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
                   <View style={styles.timePickersRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Hora Inicio</Text>
-                      <TouchableOpacity style={styles.pickerButton} onPress={() => setShowStartPicker(true)}>
+                      <TouchableOpacity style={styles.pickerButton} onPress={() => { setShowEndPicker(false); setShowStartPicker(true); }}>
                         <Clock size={18} color={colors.textSecondary} />
                         <Text style={styles.pickerButtonText}>{formatTime(newScheduleStart)} hs</Text>
                       </TouchableOpacity>
                       {showStartPicker && (
-                        <DateTimePicker
-                          value={newScheduleStart}
-                          mode="time"
-                          display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
-                          textColor={colors.textPrimary}
-                          onChange={(event, selectedDate) => {
-                            setShowStartPicker(Platform.OS === 'ios');
-                            if (selectedDate) setNewScheduleStart(selectedDate);
-                          }}
-                        />
+                        <View style={styles.timePickerContainer}>
+                          <DateTimePicker
+                            value={newScheduleStart}
+                            mode="time"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'spinner'}
+                            textColor={colors.textPrimary}
+                            onChange={(event, selectedDate) => {
+                              if (selectedDate) setNewScheduleStart(selectedDate);
+                            }}
+                          />
+                          <TouchableOpacity style={styles.pickerSaveBtn} onPress={() => setShowStartPicker(false)}>
+                            <Text style={styles.pickerSaveBtnText}>Guardar</Text>
+                          </TouchableOpacity>
+                        </View>
                       )}
                     </View>
                     <View style={{ width: spacing.md }} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.inputLabel}>Hora Fin</Text>
-                      <TouchableOpacity style={styles.pickerButton} onPress={() => setShowEndPicker(true)}>
+                      <TouchableOpacity style={styles.pickerButton} onPress={() => { setShowStartPicker(false); setShowEndPicker(true); }}>
                         <Clock size={18} color={colors.textSecondary} />
                         <Text style={styles.pickerButtonText}>{formatTime(newScheduleEnd)} hs</Text>
                       </TouchableOpacity>
                       {showEndPicker && (
-                        <DateTimePicker
-                          value={newScheduleEnd}
-                          mode="time"
-                          display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
-                          textColor={colors.textPrimary}
-                          onChange={(event, selectedDate) => {
-                            setShowEndPicker(Platform.OS === 'ios');
-                            if (selectedDate) setNewScheduleEnd(selectedDate);
-                          }}
-                        />
+                        <View style={styles.timePickerContainer}>
+                          <DateTimePicker
+                            value={newScheduleEnd}
+                            mode="time"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'spinner'}
+                            textColor={colors.textPrimary}
+                            onChange={(event, selectedDate) => {
+                              if (selectedDate) setNewScheduleEnd(selectedDate);
+                            }}
+                          />
+                          <TouchableOpacity style={styles.pickerSaveBtn} onPress={() => setShowEndPicker(false)}>
+                            <Text style={styles.pickerSaveBtnText}>Guardar</Text>
+                          </TouchableOpacity>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -618,13 +624,20 @@ const styles = StyleSheet.create({
   typeBtnActive: { backgroundColor: colors.primary + '15', borderColor: colors.primary },
   typeBtnText: { fontSize: fontSize.xs, fontFamily: fontFamily.medium, color: colors.textSecondary },
   typeBtnTextActive: { color: colors.primary, fontFamily: fontFamily.bold },
-  
-  pickerContainer: { backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: borderRadius.md, overflow: 'hidden' },
-  picker: { color: colors.textPrimary },
+
+  daySelector: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
+  dayBtn: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: borderRadius.md },
+  dayBtnActive: { backgroundColor: colors.primary + '15', borderColor: colors.primary },
+  dayBtnText: { fontSize: fontSize.xs, fontFamily: fontFamily.medium, color: colors.textSecondary },
+  dayBtnTextActive: { color: colors.primary, fontFamily: fontFamily.bold },
+
   timePickersRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
   pickerButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: borderRadius.md, padding: spacing.md, gap: spacing.sm },
   pickerButtonText: { fontSize: fontSize.md, fontFamily: fontFamily.regular, color: colors.textPrimary },
-  
+  timePickerContainer: { alignItems: 'center', marginTop: spacing.sm },
+  pickerSaveBtn: { backgroundColor: colors.primary, paddingVertical: spacing.xs, paddingHorizontal: spacing.lg, borderRadius: borderRadius.sm, marginTop: spacing.sm },
+  pickerSaveBtnText: { color: colors.white, fontSize: fontSize.sm, fontFamily: fontFamily.bold },
+
   primaryButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', marginTop: spacing.xl },
   primaryButtonText: { color: colors.white, fontSize: fontSize.md, fontFamily: fontFamily.bold },
 });
