@@ -32,6 +32,15 @@ export const fontWeight = {
   bold: '700' as const,
 };
 
+export const fontFamily = {
+  regular: 'Syne-Regular',
+  medium: 'Syne-SemiBold',
+  bold: 'Syne-Bold',
+  extraBold: 'Syne-ExtraBold',
+  monoRegular: 'SpaceMono-Regular',
+  monoBold: 'SpaceMono-Bold',
+} as const;
+
 export const shadows = {
   sm: {
     shadowColor: '#000',

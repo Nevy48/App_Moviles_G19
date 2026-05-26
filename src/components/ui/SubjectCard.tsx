@@ -26,12 +26,12 @@ interface SubjectCardProps {
 }
 
 const statusConfig: Record<ExtendedSubjectStatus, { color: string; bgColor: string; textColor: string }> = {
-  disabled: { color: colors.textTertiary, bgColor: colors.inputBackground, textColor: colors.textTertiary },
-  available: { color: colors.primary, bgColor: colors.primary + '15', textColor: colors.primary },
-  pending: { color: colors.textSecondary, bgColor: colors.inputBackground, textColor: colors.textSecondary },
-  in_progress: { color: colors.warning, bgColor: colors.warning + '15', textColor: colors.warning },
-  cursada: { color: '#A78BFA', bgColor: 'rgba(167, 139, 250, 0.15)', textColor: '#A78BFA' },
-  approved: { color: colors.success, bgColor: colors.success + '15', textColor: colors.success },
+  approved: { color: colors.success, bgColor: colors.success + '15', textColor: colors.success },       // Verde
+  cursada: { color: colors.warning, bgColor: colors.warning + '15', textColor: colors.warning },         // Amarillo
+  in_progress: { color: colors.primary, bgColor: colors.primary + '15', textColor: colors.primary },     // Azul
+  pending: { color: colors.white, bgColor: 'rgba(255, 255, 255, 0.1)', textColor: colors.white },        // Blancas
+  disabled: { color: colors.textTertiary, bgColor: colors.inputBackground, textColor: colors.textTertiary }, // Grises
+  available: { color: colors.white, bgColor: colors.inputBackground, textColor: colors.white },          // Por si se usa en algún momento
 };
 
 const statusLabels: Record<ExtendedSubjectStatus, string> = {
