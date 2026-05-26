@@ -27,7 +27,7 @@ import {
   Plus,
   Edit2,
   ChevronLeft,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { Card, SubjectCard } from '@/components/ui';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { colors } from '@/constants';

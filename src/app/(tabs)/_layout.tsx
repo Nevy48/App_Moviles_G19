@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Tabs, SplashScreen } from 'expo-router';
 import { colors } from '@/constants';
-import { Home, User, BookMarked } from 'lucide-react';
 import {
   useFonts,
   Syne_400Regular,
@@ -15,6 +14,7 @@ import {
 } from '@expo-google-fonts/space-mono';
 
 SplashScreen.preventAutoHideAsync();
+import { Home, User, BookMarked } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -45,9 +45,9 @@ export default function TabsLayout() {
           backgroundColor: colors.card,
           borderTopColor: colors.cardBorder,
           borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          paddingBottom: 12,
+          paddingTop: 12,
+          height: 85,
         },
         tabBarActiveTintColor: colors.primary as string,
         tabBarInactiveTintColor: colors.textTertiary as string,
@@ -56,21 +56,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: '',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Home size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="plan"
         options={{
-          title: '',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <BookMarked size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: '',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <User size={size} color={color as string} />,
         }}
       />
