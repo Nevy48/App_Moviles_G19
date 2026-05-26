@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '@/components/ui';

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize } from '@/constants/theme';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 interface InputProps {
   label?: string;

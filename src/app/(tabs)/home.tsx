@@ -19,7 +19,7 @@ import {
   ChevronRight,
   AlertCircle,
   X,
-} from 'lucide-react';
+} from 'lucide-react-native';
 import { Card, SubjectCard } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';

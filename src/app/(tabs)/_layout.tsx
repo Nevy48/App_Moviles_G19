@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { colors } from '@/constants';
-import { Home, User, BookMarked } from 'lucide-react';
+import { Home, User, BookMarked } from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
