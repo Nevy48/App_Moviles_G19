@@ -16,12 +16,10 @@ import {
   Clock,
   Award,
   X,
-} from 'lucide-react';
-import { SubjectCard } from '@/components/ui';
-import {
   Calendar,
   Users,
 } from 'lucide-react-native';
+import { SubjectCard } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
