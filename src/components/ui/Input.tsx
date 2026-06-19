@@ -135,8 +135,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     paddingVertical: spacing.md,
     backgroundColor: 'transparent',
-    // @ts-ignore - web only property
-    outlineStyle: 'none',
   },
   multiline: {
     minHeight: 100,

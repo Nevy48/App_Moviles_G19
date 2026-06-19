@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, Pressable, PressableProps } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors } from '@/constants';
 import { borderRadius, spacing, shadows } from '@/constants/theme';
 
-interface CardProps {
+interface CardProps extends Omit<PressableProps, 'style'> {
   children: React.ReactNode;
   style?: ViewStyle;
   variant?: 'default' | 'glass';
@@ -16,24 +16,40 @@ export const Card: React.FC<CardProps> = ({
   style,
   variant = 'default',
   padding = 'md',
+  onPress,
+  ...pressableProps
 }) => {
+  const content = (
+    <>
+      {children}
+    </>
+  );
+
+  const cardStyle = [styles.card, paddingStyles[padding], style];
+
   if (variant === 'glass') {
     return (
-      <BlurView
-        intensity={80}
-        tint="dark"
-        style={[styles.card, styles.glass, paddingStyles[padding], style]}
-      >
-        {children}
-      </BlurView>
+      <Pressable onPress={onPress} style={cardStyle} {...pressableProps}>
+        <BlurView
+          intensity={80}
+          tint="dark"
+          style={[styles.glass, paddingStyles[padding] as ViewStyle]}
+        >
+          {content}
+        </BlurView>
+      </Pressable>
     );
   }
 
-  return (
-    <View style={[styles.card, paddingStyles[padding], style]}>
-      {children}
-    </View>
-  );
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={cardStyle} {...pressableProps}>
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={cardStyle}>{content}</View>;
 };
 
 const styles = StyleSheet.create({
@@ -46,6 +62,7 @@ const styles = StyleSheet.create({
   },
   glass: {
     overflow: 'hidden',
+    borderRadius: borderRadius.lg,
   },
 });
 

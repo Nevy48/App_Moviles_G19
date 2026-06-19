@@ -1,25 +1,17 @@
-import { Button, Input } from '@/components/ui';
-import { colors } from '@/constants';
-import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/theme';
-import { useUserStore } from '@/store/userStore';
+import { useState } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { z } from 'zod';
+import { Button, Input } from '@/components/ui';
+import { colors } from '@/constants';
+import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 
 const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
 const googleIconUrl = 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
@@ -33,7 +25,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { mockLogin, setLoading, isLoading } = useUserStore();
+  const { signIn, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -49,32 +41,25 @@ export default function LoginScreen() {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    try {
-      setLoading(true);
-      // Simulación de login
-      mockLogin();
-      router.replace('/(tabs)/home');
-    } catch (error) {
-      console.error('Error en login:', error);
-    } finally {
-      setLoading(false);
+    const result = await signIn(data.email, data.password);
+
+    if (!result.success) {
+      Alert.alert('Error de autenticación', result.error || 'No se pudo iniciar sesión');
     }
   };
 
   const handleGoogleLogin = () => {
-    mockLogin();
-    router.replace('/(tabs)/home');
+    // Google login no configurado por ahora
+    Alert.alert('Próximamente', 'El login con Google estará disponible pronto');
   };
 
   return (
     <View style={styles.container}>
-      {/* Fondo con Degradado Superior */}
       <LinearGradient
         colors={[colors.primary + '15', 'transparent']}
         style={styles.topGradient}
       />
-      
-      {/* Líneas Decorativas Geométricas */}
+
       <View style={styles.decorLine1} />
       <View style={styles.decorLine2} />
 
@@ -90,9 +75,9 @@ export default function LoginScreen() {
             <View style={styles.header}>
               <Text style={styles.welcomeTitle}>¡Bienvenido!</Text>
               <View style={styles.logoWrapper}>
-                <Image 
-                  source={{ uri: logoUrl }} 
-                  style={styles.logo} 
+                <Image
+                  source={{ uri: logoUrl }}
+                  style={styles.logo}
                   contentFit="contain"
                   transition={200}
                   cachePolicy="memory-disk"
@@ -167,9 +152,9 @@ export default function LoginScreen() {
                 onPress={handleGoogleLogin}
                 variant="outline"
                 leftIcon={
-                  <Image 
-                    source={{ uri: googleIconUrl }} 
-                    style={styles.googleIcon} 
+                  <Image
+                    source={{ uri: googleIconUrl }}
+                    style={styles.googleIcon}
                     contentFit="contain"
                     cachePolicy="memory-disk"
                   />
@@ -256,7 +241,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    // Sutil brillo para el logo
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.2,

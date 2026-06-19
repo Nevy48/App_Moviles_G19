@@ -1,32 +1,22 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, User, Eye, EyeOff, Building2, GraduationCap } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Input } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
-import { useUserStore } from '@/store/userStore';
+import { useAuth } from '@/context/AuthContext';
 
 const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
 
 const registerSchema = z.object({
-  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
+  nombreCompleto: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   confirmPassword: z.string(),
@@ -39,7 +29,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { mockLogin, setLoading, isLoading } = useUserStore();
+  const { signUp, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -49,8 +39,7 @@ export default function RegisterScreen() {
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      nombreCompleto: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -58,29 +47,22 @@ export default function RegisterScreen() {
   });
 
   const onSubmit = async (data: RegisterForm) => {
-    try {
-      setLoading(true);
-      // Mock register
-      mockLogin();
-      router.replace('/(tabs)/home');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo completar el registro');
-    } finally {
-      setLoading(false);
+    const result = await signUp(data.email, data.password, data.nombreCompleto);
+
+    if (!result.success) {
+      Alert.alert('Error de registro', result.error || 'No se pudo crear la cuenta');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Fondo con Degradado Diagonal */}
       <LinearGradient
         colors={['transparent', colors.primary + '10']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.bgGradient}
       />
-      
-      {/* Elementos Decorativos Rectangulares (Diferentes al Login) */}
+
       <View style={styles.decorRect1} />
       <View style={styles.decorRect2} />
 
@@ -96,9 +78,9 @@ export default function RegisterScreen() {
             <View style={styles.header}>
               <Text style={styles.welcomeTitle}>¡Comencemos!</Text>
               <View style={styles.logoWrapper}>
-                <Image 
-                  source={{ uri: logoUrl }} 
-                  style={styles.logo} 
+                <Image
+                  source={{ uri: logoUrl }}
+                  style={styles.logo}
                   contentFit="contain"
                   transition={200}
                   cachePolicy="memory-disk"
@@ -111,41 +93,21 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.form}>
-              <View style={styles.row}>
-                <View style={styles.halfInput}>
-                  <Controller
-                    control={control}
-                    name="firstName"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        label="Nombre"
-                        placeholder="Tu nombre"
-                        value={value}
-                        onChangeText={onChange}
-                        autoCapitalize="words"
-                        leftIcon={<User size={20} color={colors.textTertiary} />}
-                        error={errors.firstName?.message}
-                      />
-                    )}
+              <Controller
+                control={control}
+                name="nombreCompleto"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Nombre completo"
+                    placeholder="Tu nombre completo"
+                    value={value}
+                    onChangeText={onChange}
+                    autoCapitalize="words"
+                    leftIcon={<User size={20} color={colors.textTertiary} />}
+                    error={errors.nombreCompleto?.message}
                   />
-                </View>
-                <View style={styles.halfInput}>
-                  <Controller
-                    control={control}
-                    name="lastName"
-                    render={({ field: { onChange, value } }) => (
-                      <Input
-                        label="Apellido"
-                        placeholder="Tu apellido"
-                        value={value}
-                        onChangeText={onChange}
-                        autoCapitalize="words"
-                        error={errors.lastName?.message}
-                      />
-                    )}
-                  />
-                </View>
-              </View>
+                )}
+              />
 
               <Controller
                 control={control}
@@ -162,22 +124,6 @@ export default function RegisterScreen() {
                     error={errors.email?.message}
                   />
                 )}
-              />
-
-              <Input
-                label="Universidad"
-                placeholder="UTN - Facultad Regional La Plata"
-                value=""
-                onChangeText={() => {}}
-                leftIcon={<Building2 size={20} color={colors.textTertiary} />}
-              />
-
-              <Input
-                label="Carrera"
-                placeholder="Ingeniería en Sistemas"
-                value=""
-                onChangeText={() => {}}
-                leftIcon={<GraduationCap size={20} color={colors.textTertiary} />}
               />
 
               <Controller
@@ -327,13 +273,6 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: spacing.xl,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  halfInput: {
-    flex: 1,
   },
   button: {
     marginTop: spacing.md,
