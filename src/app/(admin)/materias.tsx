@@ -400,15 +400,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   materiaMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+    flexWrap: 'wrap',
+    gap: spacing.xs,
   },
   materiaInfoText: {
     fontSize: fontSize.sm,
     color: colors.textTertiary,
+    flexShrink: 1,
   },
   materiaDot: {
     fontSize: fontSize.sm,
@@ -418,13 +422,18 @@ const styles = StyleSheet.create({
   planText: {
     fontSize: fontSize.sm,
     color: colors.primary,
+    flexShrink: 1,
   },
   materiaActions: {
     flexDirection: 'row',
     gap: spacing.xs,
+    marginLeft: spacing.xs,
   },
   actionButton: {
     padding: spacing.sm,
+    minWidth: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCard: {
     alignItems: 'center',
@@ -481,6 +490,7 @@ const styles = StyleSheet.create({
   selectText: {
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   errorText: {
     fontSize: fontSize.sm,

@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    overflow: 'hidden',
     ...shadows.md,
   },
   glass: {

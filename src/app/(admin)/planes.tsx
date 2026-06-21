@@ -301,18 +301,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   planYear: {
     fontSize: fontSize.sm,
     color: colors.textTertiary,
     marginTop: 2,
+    flexShrink: 1,
   },
   planActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginLeft: spacing.sm,
   },
   actionButton: {
     padding: spacing.sm,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCard: {
     alignItems: 'center',

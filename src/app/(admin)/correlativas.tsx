@@ -310,6 +310,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   correlativaArrow: {
     flexDirection: 'row',
@@ -325,9 +326,13 @@ const styles = StyleSheet.create({
   correlativaRequisito: {
     fontSize: fontSize.sm,
     color: colors.textTertiary,
+    flexShrink: 1,
   },
   deleteButton: {
     padding: spacing.sm,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCard: {
     alignItems: 'center',
@@ -384,6 +389,7 @@ const styles = StyleSheet.create({
   selectText: {
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   tipoSelector: {
     flexDirection: 'row',
@@ -406,6 +412,7 @@ const styles = StyleSheet.create({
   tipoOptionText: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+    flexShrink: 1,
   },
   tipoOptionTextSelected: {
     color: colors.background,

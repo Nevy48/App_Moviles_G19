@@ -206,11 +206,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   actionSubtitle: {
     fontSize: fontSize.sm,
     color: colors.textTertiary,
     marginTop: 2,
+    flexShrink: 1,
   },
   logoutCard: {
     marginTop: spacing.md,
