@@ -12,6 +12,7 @@ import { Button, Input } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { authService } from '@/services/authService';
 
 const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
 const googleIconUrl = 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png';
@@ -48,9 +49,16 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Google login no configurado por ahora
-    Alert.alert('Próximamente', 'El login con Google estará disponible pronto');
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await authService.signInWithGoogle();
+
+      if (error) {
+        Alert.alert('Error', error);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error inesperado');
+    }
   };
 
   return (

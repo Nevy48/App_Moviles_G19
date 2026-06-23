@@ -1,5 +1,9 @@
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase, supabase as supabaseUntyped } from '@/lib/supabase/client';
 import { Perfil, Rol } from '@/lib/supabase/database.types';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // For Expo apps, use auth.expo.io for email confirmation redirects
 // This format works across platforms (iOS, Android, web)
@@ -81,6 +85,62 @@ export const authService = {
       };
     } catch (err) {
       return { user: null, perfil: null, error: 'Error inesperado' };
+    }
+  },
+
+  async signInWithGoogle(): Promise<{ error: string | null }> {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({
+        scheme: 'miestadoacademico',
+        path: 'auth/callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (!data.url) {
+        return { error: 'No se pudo obtener la URL de autenticación' };
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl, {
+        showInRecents: true,
+      });
+
+      if (result.type === 'success') {
+        const parsedUrl = new URL(result.url);
+        const hash = parsedUrl.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (sessionError) {
+            return { error: sessionError.message };
+          }
+        } else {
+          return { error: 'No se recibieron los tokens de autenticación' };
+        }
+      } else {
+        return { error: 'Autenticación cancelada por el usuario' };
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: 'Error inesperado durante la autenticación con Google' };
     }
   },
 
