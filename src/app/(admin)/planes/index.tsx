@@ -10,12 +10,13 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { PlanEstudio } from '@/lib/supabase/database.types';
 import { planesService } from '@/services/planesService';
 import { Card, Button, Input } from '@/components/ui';
 import { colors } from '@/constants';
-import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
-import { Plus, Edit2, Trash2, BookOpen } from 'lucide-react-native';
+import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
+import { Plus, Edit2, Trash2, BookOpen, X } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,6 +31,7 @@ const planSchema = z.object({
 type PlanFormData = z.infer<typeof planSchema>;
 
 export default function AdminPlanesScreen() {
+  const router = useRouter();
   const [planes, setPlanes] = useState<PlanEstudio[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,9 +47,14 @@ export default function AdminPlanesScreen() {
   });
 
   const loadData = async () => {
-    const data = await planesService.getAll();
-    setPlanes(data);
-    setLoading(false);
+    try {
+      const data = await planesService.getAll();
+      setPlanes(data);
+    } catch (e) {
+      console.error('Error cargando planes de estudio:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -61,12 +68,13 @@ export default function AdminPlanesScreen() {
   };
 
   const onSubmit = async (data: PlanFormData) => {
-    if (editingPlan) {
-      const result = await planesService.update(editingPlan.id, {
-        nombre: data.nombre,
-        anio_resolucion: parseInt(data.anio_resolucion, 10),
-      });
+    const datosPlan = {
+      nombre: data.nombre,
+      anio_resolucion: parseInt(data.anio_resolucion, 10),
+    };
 
+    if (editingPlan) {
+      const result = await planesService.update(editingPlan.id, datosPlan);
       if (result) {
         await loadData();
         closeModal();
@@ -74,11 +82,7 @@ export default function AdminPlanesScreen() {
         Alert.alert('Error', 'No se pudo actualizar el plan');
       }
     } else {
-      const result = await planesService.create({
-        nombre: data.nombre,
-        anio_resolucion: parseInt(data.anio_resolucion, 10),
-      });
-
+      const result = await planesService.create(datosPlan);
       if (result) {
         await loadData();
         closeModal();
@@ -126,21 +130,33 @@ export default function AdminPlanesScreen() {
   };
 
   const renderPlan = ({ item }: { item: PlanEstudio }) => (
-    <Card style={styles.planCard}>
+    <Card 
+      style={styles.planCard} 
+      onPress={() => router.push(`/(admin)/planes/${item.id}`)}
+    >
       <View style={styles.planContent}>
         <View style={styles.planIcon}>
-          <BookOpen size={24} color={colors.primary} />
+          <BookOpen size={22} color={colors.primary} />
         </View>
         <View style={styles.planInfo}>
           <Text style={styles.planName}>{item.nombre}</Text>
           <Text style={styles.planYear}>Resolución: {item.anio_resolucion}</Text>
         </View>
+        {/* Contenedor de acciones aislado para evitar que interfiera con el onPress de la tarjeta */}
         <View style={styles.planActions}>
-          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton}>
-            <Edit2 size={18} color={colors.primary} />
+          <TouchableOpacity 
+            onPress={() => openEditModal(item)} 
+            style={styles.actionButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Edit2 size={16} color={colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDelete(item)} style={styles.actionButton}>
-            <Trash2 size={18} color={colors.error} />
+          <TouchableOpacity 
+            onPress={() => handleDelete(item)} 
+            style={styles.actionButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Trash2 size={16} color={colors.error} />
           </TouchableOpacity>
         </View>
       </View>
@@ -151,7 +167,7 @@ export default function AdminPlanesScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando planes...</Text>
+          <Text style={styles.loadingText}>Cargando planes de estudio...</Text>
         </View>
       </SafeAreaView>
     );
@@ -162,7 +178,7 @@ export default function AdminPlanesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Planes de Estudio</Text>
         <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
-          <Plus size={20} color={colors.background} />
+          <Plus size={20} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -171,71 +187,69 @@ export default function AdminPlanesScreen() {
         renderItem={renderPlan}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           <Card style={styles.emptyCard}>
             <BookOpen size={40} color={colors.textTertiary} />
-            <Text style={styles.emptyText}>No hay planes de estudio</Text>
-            <Text style={styles.emptySubtext}>Toca + para crear el primero</Text>
+            <Text style={styles.emptyText}>No hay planes de estudio cargados</Text>
+            <Text style={styles.emptySubtext}>Toca el botón + superior para registrar una nueva carrera.</Text>
           </Card>
         }
       />
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={closeModal}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
-            </Text>
-            <TouchableOpacity onPress={closeModal}>
-              <Text style={styles.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
+      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={closeModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContentStyle}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingPlan ? 'Editar Plan' : 'Nuevo Plan de Estudio'}
+              </Text>
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <X size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Controller
+                control={control}
+                name="nombre"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Nombre de la Carrera / Plan"
+                    placeholder="Ej: Ingeniería en Sistemas"
+                    value={value}
+                    onChangeText={onChange}
+                    error={errors.nombre?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="anio_resolucion"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Año de la Resolución Ministerial"
+                    placeholder="Ej: 2023"
+                    value={value}
+                    onChangeText={onChange}
+                    keyboardType="numeric"
+                    error={errors.anio_resolucion?.message}
+                  />
+                )}
+              />
+
+              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(onSubmit)}>
+                <Text style={styles.primaryButtonText}>
+                  {editingPlan ? 'Actualizar Registro' : 'Dar de Alta Plan'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <View style={styles.modalContent}>
-            <Controller
-              control={control}
-              name="nombre"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Nombre del Plan"
-                  placeholder="Ej: Plan 2024"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.nombre?.message}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="anio_resolucion"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Año de Resolución"
-                  placeholder="Ej: 2024"
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="numeric"
-                  error={errors.anio_resolucion?.message}
-                />
-              )}
-            />
-
-            <Button
-              title={editingPlan ? 'Actualizar' : 'Crear Plan'}
-              onPress={handleSubmit(onSubmit)}
-              style={styles.submitButton}
-            />
-          </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -253,43 +267,47 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: fontSize.md,
+    fontFamily: fontFamily.regular,
     color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
   },
   headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
+    fontSize: fontSize.xxl,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
   },
   addButton: {
     backgroundColor: colors.primary,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContent: {
-    padding: spacing.lg,
-    paddingTop: 0,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   planCard: {
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.card,
   },
   planContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   planIcon: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '20',
+    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -299,44 +317,61 @@ const styles = StyleSheet.create({
   },
   planName: {
     fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
     flexShrink: 1,
   },
   planYear: {
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
-    marginTop: 2,
+    fontFamily: fontFamily.regular,
+    color: colors.textSecondary,
+    marginTop: 4,
     flexShrink: 1,
   },
   planActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginLeft: spacing.sm,
   },
   actionButton: {
     padding: spacing.sm,
-    minWidth: 40,
+    minWidth: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing.xxl,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.inputBackground,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
   },
   emptyText: {
     fontSize: fontSize.md,
+    fontFamily: fontFamily.bold,
     color: colors.textSecondary,
     marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: fontSize.sm,
+    fontFamily: fontFamily.regular,
     color: colors.textTertiary,
+    textAlign: 'center',
     marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContentStyle: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '90%',
+    minHeight: '40%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -347,18 +382,26 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.cardBorder,
   },
   modalTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.xl,
+    fontFamily: fontFamily.bold,
     color: colors.textPrimary,
   },
-  cancelText: {
-    fontSize: fontSize.md,
-    color: colors.primary,
+  closeButton: {
+    padding: spacing.xs,
   },
-  modalContent: {
+  modalBody: {
     padding: spacing.lg,
   },
-  submitButton: {
+  primaryButton: {
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
     marginTop: spacing.xl,
+  },
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.bold,
   },
 });

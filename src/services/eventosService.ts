@@ -127,7 +127,11 @@ export const eventosService = {
   async getProximosEventos(alumnoId: string, limit: number = 5): Promise<EventoAlumnoWithDetails[]> {
     try {
       const today = new Date().toISOString().split('T')[0];
-
+      
+      if (!alumnoId || alumnoId === "") {
+        return [];
+      }
+      
       const { data, error } = await supabase
         .from('eventos_alumno')
         .select(`

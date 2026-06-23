@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { colors } from '@/constants';
-import { LayoutDashboard, BookOpen, GraduationCap, Link2, Settings } from 'lucide-react-native';
+import { LayoutDashboard, BookOpen, GraduationCap, Settings } from 'lucide-react-native';
 
 export default function AdminLayout() {
   return (
@@ -35,17 +35,10 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
-        name="materias"
+        name="materias/index"
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => <GraduationCap size={size} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="correlativas"
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <Link2 size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
