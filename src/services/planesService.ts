@@ -38,10 +38,14 @@ export const planesService = {
         .from('planes_estudio')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching plan:', error);
+        return null;
+      }
+
+      if (!data) {
         return null;
       }
 

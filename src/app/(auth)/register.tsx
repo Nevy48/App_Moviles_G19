@@ -5,182 +5,174 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Mail, Lock, Eye, EyeOff, User, ArrowLeft } from 'lucide-react-native';
 import { Button, Input } from '@/components/ui';
 import { colors } from '@/constants';
-import { borderRadius, spacing, fontSize, fontWeight } from '@/constants/theme';
+import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 
-const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
-
-const registerSchema = z.object({
+const esquemaRegistro = z.object({
   nombreCompleto: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  password: z.string(),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Las contraseñas no coinciden',
   path: ['confirmPassword'],
 });
 
-type RegisterForm = z.infer<typeof registerSchema>;
+type RegisterFormularioData = z.infer<typeof esquemaRegistro>;
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp, isLoading } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [paso, setPaso] = useState(1); // Control del flujo del asistente tipo wizard
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      nombreCompleto: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
+  const { control, handleSubmit, watch, trigger, formState: { errors } } = useForm<RegisterFormularioData>({
+    resolver: zodResolver(esquemaRegistro),
+    defaultValues: { nombreCompleto: '', email: '', password: '', confirmPassword: '' },
   });
 
-  const onSubmit = async (data: RegisterForm) => {
-    const result = await signUp(data.email, data.password, data.nombreCompleto);
+  const valorPassword = watch('password') || '';
+  const valorConfirmPassword = watch('confirmPassword') || '';
 
-    if (!result.success) {
-      Alert.alert('Error de registro', result.error || 'No se pudo crear la cuenta');
+  const requisitosValidacion = [
+    { test: (p: string) => p.length >= 8 && p.length <= 16, label: 'Entre 8 y 16 caracteres' },
+    { test: (p: string) => /[A-Z]/.test(p), label: 'Una letra mayúscula' },
+    { test: (p: string) => /[a-z]/.test(p), label: 'Una letra minúscula' },
+    { test: (p: string) => /[0-9]/.test(p), label: 'Un número' },
+    { test: (p: string, cp: string) => p === cp && p.length > 0, label: 'Las contraseñas coinciden' }
+  ];
+
+  const todoEsValido = requisitosValidacion.every(req => req.test(valorPassword, valorConfirmPassword));
+
+  // Valida unicamente los campos de acceso antes de permitir el paso de pantalla
+  const procesarSiguientePaso = async () => {
+    const camposValidos = await trigger(['email', 'password', 'confirmPassword']);
+    if (camposValidos && todoEsValido) {
+      setPaso(2);
+    } else if (!todoEsValido) {
+      Alert.alert('Requisito faltante', 'La contraseña no cumple con las condiciones de seguridad.');
+    }
+  };
+
+  const alEnviarFormulario = async (data: RegisterFormularioData) => {
+    const resultado = await signUp(data.email, data.password, data.nombreCompleto);
+    if (!resultado.success) {
+      Alert.alert('Error de registro', resultado.error || 'No se pudo crear la cuenta');
     }
   };
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['transparent', colors.primary + '10']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.bgGradient}
-      />
-
-      <View style={styles.decorRect1} />
-      <View style={styles.decorRect2} />
-
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent} 
+            scrollEnabled={false} 
+            bounces={false}
             showsVerticalScrollIndicator={false}
           >
+            
             <View style={styles.header}>
-              <Text style={styles.welcomeTitle}>¡Comencemos!</Text>
-              <View style={styles.logoWrapper}>
-                <Image
-                  source={{ uri: logoUrl }}
-                  style={styles.logo}
-                  contentFit="contain"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
+              <View style={styles.tituloContenedor}>
+                <Text style={styles.tituloTextoBase}>CREAR </Text>
+                <Text style={styles.tituloTextoResaltado}>CUENTA</Text>
               </View>
-              <Text style={styles.title}>Crear Cuenta</Text>
-              <Text style={styles.subtitle}>
-                Unite a la comunidad académica
-              </Text>
             </View>
 
-            <View style={styles.form}>
-              <Controller
-                control={control}
-                name="nombreCompleto"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Nombre completo"
-                    placeholder="Tu nombre completo"
-                    value={value}
-                    onChangeText={onChange}
-                    autoCapitalize="words"
-                    leftIcon={<User size={20} color={colors.textTertiary} />}
-                    error={errors.nombreCompleto?.message}
+            <View style={styles.registerBox}>
+              
+              {/* PASO 1: Datos de Acceso y Credenciales */}
+              {paso === 1 && (
+                <View style={styles.bloqueContenido}>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field: { onChange, value } }) => (
+                      <Input label="Email" placeholder="tu@email.com" value={value} onChangeText={onChange} keyboardType="email-address" autoCapitalize="none" leftIcon={<Mail size={20} color={colors.textTertiary} />} error={errors.email?.message} />
+                    )}
                   />
-                )}
-              />
 
-              <Controller
-                control={control}
-                name="email"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Email"
-                    placeholder="tu@email.com"
-                    value={value}
-                    onChangeText={onChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    leftIcon={<Mail size={20} color={colors.textTertiary} />}
-                    error={errors.email?.message}
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, value } }) => (
+                      <Input
+                        label="Contraseña"
+                        placeholder="••••••••"
+                        value={value}
+                        onChangeText={onChange}
+                        secureTextEntry={!mostrarPassword}
+                        leftIcon={<Lock size={20} color={colors.textTertiary} />}
+                        rightIcon={
+                          <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)}>
+                            {mostrarPassword ? <EyeOff size={20} color={colors.textTertiary} /> : <Eye size={20} color={colors.textTertiary} />}
+                          </TouchableOpacity>
+                        }
+                        error={errors.password?.message}
+                      />
+                    )}
                   />
-                )}
-              />
 
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Contraseña"
-                    placeholder="••••••••"
-                    value={value}
-                    onChangeText={onChange}
-                    secureTextEntry={!showPassword}
-                    leftIcon={<Lock size={20} color={colors.textTertiary} />}
-                    rightIcon={
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                        {showPassword ? (
-                          <EyeOff size={20} color={colors.textTertiary} />
-                        ) : (
-                          <Eye size={20} color={colors.textTertiary} />
-                        )}
-                      </TouchableOpacity>
-                    }
-                    error={errors.password?.message}
+                  <Controller
+                    control={control}
+                    name="confirmPassword"
+                    render={({ field: { onChange, value } }) => (
+                      <Input label="Confirmar Contraseña" placeholder="••••••••" value={value} onChangeText={onChange} secureTextEntry={!mostrarPassword} leftIcon={<Lock size={20} color={colors.textTertiary} />} error={errors.confirmPassword?.message} />
+                    )}
                   />
-                )}
-              />
 
-              <Controller
-                control={control}
-                name="confirmPassword"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Confirmar Contraseña"
-                    placeholder="••••••••"
-                    value={value}
-                    onChangeText={onChange}
-                    secureTextEntry={!showPassword}
-                    leftIcon={<Lock size={20} color={colors.textTertiary} />}
-                    error={errors.confirmPassword?.message}
+                  <View style={styles.contenedorRequisitos}>
+                    <Text style={styles.tituloRequisitos}>Requisitos de tu contraseña:</Text>
+                    {requisitosValidacion.map((req, indice) => {
+                      const cumpleRequisito = req.test(valorPassword, valorConfirmPassword);
+                      return (
+                        <View key={indice} style={styles.filaRequisito}>
+                          <View style={[styles.circuloCheck, cumpleRequisito && styles.circuloCheckCumplido]}>
+                            {cumpleRequisito && <Text style={styles.simboloCheck}>✓</Text>}
+                          </View>
+                          <Text style={[styles.textoRequisito, cumpleRequisito && styles.textoRequisitoCumplido]}>
+                            {req.label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <Button title="Continuar" onPress={procesarSiguientePaso} style={styles.submitButton} />
+                </View>
+              )}
+
+              {/* PASO 2: Identificación de Perfil Personal */}
+              {paso === 2 && (
+                <View style={styles.bloqueContenido}>
+                  <TouchableOpacity style={styles.botonVolverPaso} onPress={() => setPaso(1)}>
+                    <ArrowLeft size={16} color={colors.primary} />
+                    <Text style={styles.textoVolverPaso}>Volver al paso anterior</Text>
+                  </TouchableOpacity>
+
+                  <Controller
+                    control={control}
+                    name="nombreCompleto"
+                    render={({ field: { onChange, value } }) => (
+                      <Input label="Nombre completo" placeholder="Tu nombre y apellido" value={value} onChangeText={onChange} autoCapitalize="words" leftIcon={<User size={20} color={colors.textTertiary} />} error={errors.nombreCompleto?.message} />
+                    )}
                   />
-                )}
-              />
 
-              <Button
-                title="Crear Cuenta"
-                onPress={handleSubmit(onSubmit)}
-                loading={isLoading}
-                style={styles.button}
-              />
+                  <Button title="Finalizar Alta" onPress={handleSubmit(alEnviarFormulario)} loading={isLoading} style={styles.submitButton} />
+                </View>
+              )}
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>¿Ya tenés cuenta?</Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                  <Text style={styles.footerLink}>Iniciá sesión</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>¿Ya tenés cuenta?</Text>
-              <TouchableOpacity onPress={() => router.back()}>
-                <Text style={styles.footerLink}>Iniciá Sesión</Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -189,108 +181,28 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  bgGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  decorRect1: {
-    position: 'absolute',
-    top: '15%',
-    right: -20,
-    width: 120,
-    height: 60,
-    backgroundColor: colors.primary,
-    opacity: 0.1,
-    borderRadius: borderRadius.md,
-    transform: [{ rotate: '-15deg' }],
-  },
-  decorRect2: {
-    position: 'absolute',
-    bottom: '10%',
-    left: -30,
-    width: 180,
-    height: 40,
-    backgroundColor: colors.primary,
-    opacity: 0.05,
-    borderRadius: borderRadius.md,
-    transform: [{ rotate: '20deg' }],
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  welcomeTitle: {
-    fontSize: 40,
-    fontWeight: fontWeight.bold,
-    color: colors.primary,
-    marginBottom: spacing.sm,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(55, 129, 247, 0.2)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  logoWrapper: {
-    padding: spacing.xs,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-  form: {
-    marginBottom: spacing.xl,
-  },
-  button: {
-    marginTop: spacing.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingBottom: spacing.lg,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: fontSize.md,
-  },
-  footerLink: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  safeArea: { flex: 1 },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, justifyContent: 'center' },
+  header: { alignItems: 'center', marginBottom: spacing.md },
+  tituloContenedor: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  tituloTextoBase: { fontSize: fontSize.xxl, fontFamily: 'Syne-ExtraBold', color: colors.textPrimary, letterSpacing: 0.5 },
+  tituloTextoResaltado: { fontSize: fontSize.xxl, fontFamily: 'Syne-ExtraBold', color: colors.primary, letterSpacing: 0.5 },
+  registerBox: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 20, padding: spacing.lg, width: '100%', maxWidth: 400, alignSelf: 'center' },
+  bloqueContenido: { gap: spacing.xs },
+  submitButton: { marginTop: spacing.md, marginBottom: spacing.xs },
+  contenedorRequisitos: { backgroundColor: colors.inputBackground, padding: spacing.sm, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.inputBorder, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2, marginBottom: 2 },
+  tituloRequisitos: { fontSize: fontSize.xs, fontFamily: fontFamily.bold, color: colors.textSecondary, marginBottom: 2 },
+  filaRequisito: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  circuloCheck: { width: 14, height: 14, borderRadius: borderRadius.full, borderWidth: 1, borderColor: colors.inputBorder, alignItems: 'center', justifyContent: 'center' },
+  circuloCheckCumplido: { backgroundColor: colors.success, borderColor: colors.success },
+  simboloCheck: { color: colors.white, fontSize: 9, fontFamily: fontFamily.bold, marginTop: -1 },
+  textoRequisito: { fontSize: fontSize.xs, fontFamily: fontFamily.regular, color: colors.textTertiary },
+  textoRequisitoCumplido: { color: colors.textPrimary, fontFamily: fontFamily.medium },
+  botonVolverPaso: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, marginBottom: spacing.sm },
+  textoVolverPaso: { color: colors.primary, fontSize: fontSize.sm, fontFamily: fontFamily.medium },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.xs, marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md },
+  footerText: { color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fontFamily.regular },
+  footerLink: { color: colors.primary, fontSize: fontSize.sm, fontFamily: fontFamily.bold },
 });

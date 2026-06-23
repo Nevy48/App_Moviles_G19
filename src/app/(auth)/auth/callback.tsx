@@ -2,26 +2,23 @@ import { useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants';
+import { fontSize, fontFamily } from '@/constants/theme';
 
 export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    // The OAuth callback is handled by authService.signInWithGoogle()
-    // via WebBrowser.openAuthSessionAsync. This route just needs
-    // to exist for the deep link to resolve properly.
-    // After a short delay, redirect back to login if somehow we end up here.
-    const timer = setTimeout(() => {
+    const temporizador = setTimeout(() => {
       router.replace('/(auth)/login');
     }, 2000);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(temporizador);
   }, [router]);
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-      <Text style={{ color: colors.textSecondary, marginTop: 16 }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background as string }}>
+      <ActivityIndicator size="large" color={colors.primary as string} />
+      <Text style={{ color: colors.textSecondary as string, marginTop: 16, fontSize: fontSize.md, fontFamily: fontFamily.medium }}>
         Completando autenticación...
       </Text>
     </View>
