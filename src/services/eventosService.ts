@@ -42,6 +42,26 @@ export const eventosService = {
     }
   },
 
+  async getByMateria(materiaId: string): Promise<EventoAlumno[]> {
+    try {
+      const { data, error } = await supabase
+        .from('eventos_alumno')
+        .select('*')
+        .eq('id_materia', materiaId)
+        .order('fecha', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching eventos por materia:', error);
+        return [];
+      }
+
+      return (data || []) as EventoAlumno[];
+    } catch (err) {
+      console.error('Error fetching eventos por materia:', err);
+      return [];
+    }
+  },
+
   async getById(id: string): Promise<EventoAlumno | null> {
     try {
       const { data, error } = await supabase
@@ -127,11 +147,11 @@ export const eventosService = {
   async getProximosEventos(alumnoId: string, limit: number = 5): Promise<EventoAlumnoWithDetails[]> {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       if (!alumnoId || alumnoId === "") {
         return [];
       }
-      
+
       const { data, error } = await supabase
         .from('eventos_alumno')
         .select(`

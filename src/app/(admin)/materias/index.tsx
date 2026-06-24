@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Alert,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Materia, PlanEstudio } from '@/lib/supabase/database.types';
@@ -21,6 +23,7 @@ import { Plus, Edit2, Trash2, GraduationCap, X } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useFocusEffect } from 'expo-router';
 
 const esquemaMateriaGlobal = z.object({
   id_plan: z.string().min(1, 'Selecciona un plan de estudio obligatorio'),
@@ -68,9 +71,11 @@ export default function AdminMateriasGlobalesScreen() {
     }
   };
 
-  useEffect(() => {
-    cargarDatosCentrales();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      cargarDatosCentrales();
+    }, [])
+  );
 
   const alRefrescar = async () => {
     setRefrescando(true);
@@ -230,92 +235,86 @@ export default function AdminMateriasGlobalesScreen() {
       />
 
       {/* Modal Deslizante estilo Bottom Sheet */}
+      {/* Reemplazar todo el bloque de Modal por esta estructura con KeyboardAvoidingView */}
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={cerrarModal}>
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPress={cerrarModal}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          {/* Este contenedor captura los clics internos para evitar que cierren el modal por error */}
-          <TouchableOpacity 
-            activeOpacity={1} 
-            style={styles.modalContentStyle}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {materiaEnEdicion ? 'Modificar Asignatura' : 'Nueva Materia Global'}
-              </Text>
-              <TouchableOpacity style={styles.closeButton} onPress={cerrarModal}>
-                <X size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Controller
-                control={control}
-                name="nombre"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Nombre de la asignatura" placeholder="Ej. Legislación" value={value} onChangeText={onChange} error={errors.nombre?.message} />
-                )}
-              />
-
-              <View style={styles.rowInlineForm}>
-                <View style={{ flex: 1 }}>
-                  <Controller
-                    control={control}
-                    name="nivel"
-                    render={({ field: { onChange, value } }) => (
-                      <Input label="Nivel / Año" placeholder="1" value={value} onChangeText={onChange} keyboardType="numeric" error={errors.nivel?.message} />
-                    )}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Controller
-                    control={control}
-                    name="horas_anuales"
-                    render={({ field: { onChange, value } }) => (
-                      <Input label="Horas semanales" placeholder="64" value={value} onChangeText={onChange} keyboardType="numeric" error={errors.horas_anuales?.message} />
-                    )}
-                  />
-                </View>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContentStyle}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {materiaEnEdicion ? 'Modificar Asignatura' : 'Nueva Materia Global'}
+                </Text>
+                <TouchableOpacity style={styles.closeButton} onPress={cerrarModal}>
+                  <X size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.inputLabel}>Asociar a un plan (Opcional)</Text>
-              <TouchableOpacity
-                style={styles.select}
-                onPress={() => {
-                  const opcionesPlanes = planes.map((p) => ({
-                    text: p.nombre,
-                    onPress: () => reset({ ...control._formValues, id_plan: p.id }),
-                  }));
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <Controller
+                  control={control}
+                  name="nombre"
+                  render={({ field: { onChange, value } }) => (
+                    <Input label="Nombre de la asignatura" placeholder="Ej. Legislación" value={value} onChangeText={onChange} error={errors.nombre?.message} />
+                  )}
+                />
 
-                  // Inyectamos la opción nativa de cancelar para cerrar la alerta limpiamente
-                  opcionesPlanes.push({
-                    text: 'Cancelar',
-                    style: 'cancel',
-                    onPress: () => {},
-                  });
+                <View style={styles.rowInlineForm}>
+                  <View style={{ flex: 1 }}>
+                    <Controller
+                      control={control}
+                      name="nivel"
+                      render={({ field: { onChange, value } }) => (
+                        <Input label="Nivel / Año" placeholder="1" value={value} onChangeText={onChange} keyboardType="numeric" error={errors.nivel?.message} />
+                      )}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Controller
+                      control={control}
+                      name="horas_anuales"
+                      render={({ field: { onChange, value } }) => (
+                        <Input label="Horas semanales" placeholder="64" value={value} onChangeText={onChange} keyboardType="numeric" error={errors.horas_anuales?.message} />
+                      )}
+                    />
+                  </View>
+                </View>
 
-                  Alert.alert('Planes Disponibles', undefined, opcionesPlanes);
-                }}
-              >
-                <Text style={[styles.selectText, !control._formValues.id_plan && { color: colors.textTertiary }]}>
-                {control._formValues.id_plan 
-                    ? (planes.find(p => p.id === control._formValues.id_plan)?.nombre || 'Seleccionar plan')
-                    : 'Sin plan'
-                }
-                </Text>
-              </TouchableOpacity>
-              {errors.id_plan && <Text style={styles.errorText}>{errors.id_plan.message}</Text>}
+                <Text style={styles.inputLabel}>Asociar a un plan (Opcional)</Text>
+                <TouchableOpacity
+                  style={styles.select}
+                  onPress={() => {
+                    const opcionesPlanes = planes.map((p) => ({
+                      text: p.nombre,
+                      onPress: () => reset({ ...control._formValues, id_plan: p.id }),
+                    }));
+                    opcionesPlanes.unshift({
+                      text: 'Sin plan',
+                      onPress: () => reset({ ...control._formValues, id_plan: '' }),
+                    });
 
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(alEnviarFormulario)}>
-                <Text style={styles.primaryButtonText}>
-                  {materiaEnEdicion ? 'Guardar Cambios' : 'Dar de Alta General'}
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+                    Alert.alert('Planes Disponibles', undefined, opcionesPlanes);
+                  }}
+                >
+                  <Text style={[styles.selectText, !control._formValues.id_plan && { color: colors.success }]}>
+                    {control._formValues.id_plan 
+                      ? (planes.find(p => p.id === control._formValues.id_plan)?.nombre || 'Seleccionar plan')
+                      : 'Sin plan'
+                    }
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(alEnviarFormulario)}>
+                  <Text style={styles.primaryButtonText}>
+                    {materiaEnEdicion ? 'Guardar Cambios' : 'Dar de Alta General'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

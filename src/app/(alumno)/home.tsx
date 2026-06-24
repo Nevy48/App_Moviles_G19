@@ -10,10 +10,11 @@ import {
   TextInput,
   Platform,
   Image,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
@@ -26,6 +27,8 @@ import {
   Plus,
   Edit2,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react-native';
 import { Card, SubjectCard } from '@/components/ui';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -35,54 +38,43 @@ import { useAuth } from '@/context/AuthContext';
 import { materiasService } from '@/services/materiasService';
 import { eventosService } from '@/services/eventosService';
 import { planesService } from '@/services/planesService';
-import { Materia } from '@/lib/supabase/database.types';
+import { Materia, PlanEstudio } from '@/lib/supabase/database.types';
 
 export type ExtendedSubjectStatus = 'disabled' | 'available' | 'pending' | 'in_progress' | 'cursada' | 'approved';
 
-type SubjectEvent = {
-  id: string;
-  title: string;
-  type: string;
-  date: string;
-  id_materia?: string | null;
-};
-
-type SubjectSchedule = {
-  day: string;
-  startTime: string;
-  endTime: string;
-  room: string;
-};
-
-type MateriaWithStatus = Materia & {
-  status: ExtendedSubjectStatus;
-};
+type SubjectEvent = { id: string; title: string; type: string; date: string; id_materia?: string | null; };
+type SubjectSchedule = { day: string; startTime: string; endTime: string; room: string; };
+type MateriaWithStatus = Materia & { status: ExtendedSubjectStatus; };
 
 const logoUrl = 'https://res.cloudinary.com/disx14b4q/image/upload/v1779402010/image_2_bluupa.png';
 
 const SUBJECT_STATUS_KEY = '@materias_status';
 const SUBJECT_SCHEDULE_KEY = '@materia_schedule';
-const PLAN_ID_KEY = '@plan_id';
-const PLAN_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'; // Plan Ingeniería en Sistemas 2023
+const USER_PLAN_KEY = '@plan_id_alumno';
 
 export default function AlumnoHomeScreen() {
   const { perfil } = useAuth();
+  const router = useRouter();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [materias, setMaterias] = useState<MateriaWithStatus[]>([]);
   const [events, setEvents] = useState<SubjectEvent[]>([]);
   const [schedule, setSchedule] = useState<SubjectSchedule | null>(null);
-  const [planNombre, setPlanNombre] = useState('Ingeniería en Sistemas');
+  const [planActivo, setPlanActivo] = useState<PlanEstudio | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Estados modales
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [modalView, setModalView] = useState<'main' | 'add_event' | 'edit_schedule'>('main');
   const [selectedMateria, setSelectedMateria] = useState<MateriaWithStatus | null>(null);
 
+  // Estados formulario eventos
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState('Parcial');
   const [newEventDate, setNewEventDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Estados formulario horario
   const [newScheduleDay, setNewScheduleDay] = useState('Lunes');
   const [newScheduleRoom, setNewScheduleRoom] = useState('');
   const [newScheduleStart, setNewScheduleStart] = useState(new Date(new Date().setHours(15, 0, 0, 0)));
@@ -90,22 +82,26 @@ export default function AlumnoHomeScreen() {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
+  // Estado para animacion de eventos (mostrar más)
+  const [mostrarTodosEventos, setMostrarTodosEventos] = useState(false);
+
   const loadData = async () => {
     try {
-      // Load plan info
-      const plan = await planesService.getById(PLAN_ID);
-      if (plan) {
-        setPlanNombre(plan.nombre.replace(' - Plan 2023', ''));
+      setLoading(true);
+      const planIdAlmacenado = await AsyncStorage.getItem(USER_PLAN_KEY);
+      
+      if (!planIdAlmacenado) {
+        setLoading(false);
+        return;
       }
 
-      // Load subjects from Supabase
-      const materiasData = await materiasService.getByPlan(PLAN_ID);
+      const plan = await planesService.getById(planIdAlmacenado);
+      setPlanActivo(plan);
 
-      // Load saved statuses from AsyncStorage
+      const materiasData = await materiasService.getByPlan(planIdAlmacenado);
       const savedStatuses = await AsyncStorage.getItem(SUBJECT_STATUS_KEY);
       const statusMap: Record<string, ExtendedSubjectStatus> = savedStatuses ? JSON.parse(savedStatuses) : {};
 
-      // Combine subjects with their statuses
       const materiasConStatus: MateriaWithStatus[] = materiasData.map((m) => ({
         ...m,
         status: statusMap[m.id] || 'pending',
@@ -113,18 +109,11 @@ export default function AlumnoHomeScreen() {
 
       setMaterias(materiasConStatus);
 
-      // Load schedule
       const savedSchedule = await AsyncStorage.getItem(SUBJECT_SCHEDULE_KEY);
       if (savedSchedule) {
         setSchedule(JSON.parse(savedSchedule));
-        // Set the selected materia for the schedule
-        const cursandoMateria = materiasConStatus.find((m) => m.status === 'in_progress');
-        if (cursandoMateria) {
-          setSelectedMateria(cursandoMateria);
-        }
       }
 
-      // Load events from Supabase if user is logged in
       if (perfil?.id) {
         const eventosData = await eventosService.getByAlumno(perfil.id);
         const formattedEvents: SubjectEvent[] = eventosData.map((e: any) => ({
@@ -155,13 +144,21 @@ export default function AlumnoHomeScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const toggleEventos = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMostrarTodosEventos(!mostrarTodosEventos);
   };
 
-  const formatDate = (date: Date) => {
-    const formatted = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  const openModal = (materia?: MateriaWithStatus) => {
+    setModalView('main');
+    if (materia) {
+      setSelectedMateria(materia);
+    }
+    if (schedule) {
+      setNewScheduleDay(schedule.day);
+      setNewScheduleRoom(schedule.room);
+    }
+    setShowDetailModal(true);
   };
 
   const handleSaveEvent = async () => {
@@ -232,165 +229,152 @@ export default function AlumnoHomeScreen() {
     });
     setMaterias(updatedMaterias);
 
-    // Update selectedMateria if needed
     if (selectedMateria?.id === materiaId) {
       setSelectedMateria({ ...selectedMateria, status: newStatus });
     }
 
-    // Save to AsyncStorage
     const statusMap: Record<string, ExtendedSubjectStatus> = {};
     updatedMaterias.forEach((m) => {
       statusMap[m.id] = m.status;
     });
     await AsyncStorage.setItem(SUBJECT_STATUS_KEY, JSON.stringify(statusMap));
-
     setShowDetailModal(false);
   };
 
-  const openModal = (materia?: MateriaWithStatus) => {
-    setModalView('main');
-    if (materia) {
-      setSelectedMateria(materia);
-    }
-    if (schedule) {
-      setNewScheduleDay(schedule.day);
-      setNewScheduleRoom(schedule.room);
-    }
-    setShowDetailModal(true);
+  const formatTime = (date: Date) => date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (date: Date) => {
+    const formatted = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
-  const cursandoMaterias = materias.filter((m) => m.status === 'in_progress');
-  const currentCursando = cursandoMaterias[0] || null;
+  const getUserName = () => perfil?.nombre_completo ? perfil.nombre_completo.split(' ')[0] : 'Alumno';
 
-  const stats = {
-    total: materias.length,
-    approved: materias.filter((m) => m.status === 'approved').length,
-    inProgress: materias.filter((m) => m.status === 'in_progress').length,
-    cursada: materias.filter((m) => m.status === 'cursada').length,
-    pending: materias.filter((m) => m.status === 'pending').length,
-    percentage: materias.length > 0 ? Math.round((materias.filter((m) => m.status === 'approved').length / materias.length) * 100) : 0,
-  };
-
-  const getUserName = () => {
-    if (perfil?.nombre_completo) {
-      const parts = perfil.nombre_completo.split(' ');
-      return parts[0];
-    }
-    return 'Alumno';
-  };
+  const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const diaActual = diasSemana[new Date().getDay()];
+  const horarioHoy = schedule?.day === diaActual ? schedule : null;
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>Cargando tu estado...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  if (!planActivo) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyPlanContainer}>
+          <BookOpen size={64} color={colors.primary} style={{ marginBottom: 20 }} />
+          <Text style={styles.emptyTitle}>Aún no seleccionaste carrera</Text>
+          <Text style={styles.emptySubtitle}>Ve a la pestaña de "Materias" para inscribirte en un Plan de Estudios.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const cursandoMaterias = materias.filter((m) => m.status === 'in_progress');
+  const stats = {
+    total: materias.length || 1,
+    approved: materias.filter((m) => m.status === 'approved').length,
+    inProgress: cursandoMaterias.length,
+    cursada: materias.filter((m) => m.status === 'cursada').length,
+    percentage: Math.round((materias.filter((m) => m.status === 'approved').length / (materias.length || 1)) * 100),
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Hola, {getUserName()}</Text>
-            <Text style={styles.careerText}>{planNombre}</Text>
+            <Text style={styles.careerText} numberOfLines={1}>{planActivo.nombre}</Text>
           </View>
           <Image source={{ uri: logoUrl }} style={styles.logo} />
         </View>
 
         <View style={styles.progressGradient}>
-          <LinearGradient
-            colors={[colors.primary + '40', colors.primary + '10']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.progressGradientChild}
-          >
+          <LinearGradient colors={[colors.primary + '40', colors.primary + '10']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.progressGradientChild}>
             <View style={styles.progressHeader}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.progressTitle}>Progreso Académico</Text>
-                <Text style={styles.progressSubtitle}>
-                  {stats.approved} de {stats.total} materias completadas
-                </Text>
+                <Text style={styles.progressSubtitle}>{stats.approved} de {stats.total} materias completadas</Text>
               </View>
               <View style={styles.percentageContainer}>
                 <Text style={styles.percentage}>{stats.percentage}%</Text>
               </View>
             </View>
-            <ProgressBar percentage={stats.percentage} showPercentage={false} height={10} color={[colors.primary, colors.primaryLight]} />
+            <View style={{ width: '100%' }}>
+              <ProgressBar percentage={stats.percentage} showPercentage={false} height={8} color={[colors.primary, colors.primaryLight]} />
+            </View>
             <View style={styles.progressStats}>
-              <View style={styles.progressStat}>
-                <CheckCircle size={16} color={colors.success} />
-                <Text style={styles.progressStatText}>{stats.approved} aprobadas</Text>
-              </View>
-              <View style={styles.progressStat}>
-                <BookOpen size={16} color={colors.primary} />
-                <Text style={styles.progressStatText}>{stats.inProgress} cursando</Text>
-              </View>
-              <View style={styles.progressStat}>
-                <CheckCircle size={16} color={colors.warning} />
-                <Text style={styles.progressStatText}>{stats.cursada} cursadas</Text>
-              </View>
+              <View style={styles.progressStat}><CheckCircle size={14} color={colors.success} /><Text style={styles.progressStatText}>{stats.approved} aprobadas</Text></View>
+              <View style={styles.progressStat}><BookOpen size={14} color={colors.primary} /><Text style={styles.progressStatText}>{stats.inProgress} cursando</Text></View>
+              <View style={styles.progressStat}><CheckCircle size={14} color={colors.warning} /><Text style={styles.progressStatText}>{stats.cursada} cursadas</Text></View>
             </View>
           </LinearGradient>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Horario de Hoy</Text>
+          <Text style={styles.sectionTitle}>Horario de Hoy ({diaActual})</Text>
         </View>
-        {schedule && currentCursando ? (
+        {horarioHoy && cursandoMaterias[0] ? (
           <Card style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <View style={styles.iconContainer}>
-                <Clock size={24} color={colors.primary} />
-              </View>
+              <View style={styles.iconContainer}><Clock size={24} color={colors.primary} /></View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>{currentCursando.nombre}</Text>
+                <Text style={styles.infoTitle}>{cursandoMaterias[0].nombre}</Text>
                 <View style={styles.infoDetailRow}>
                   <Clock size={14} color={colors.textSecondary} />
-                  <Text style={styles.infoDetailText}>{schedule.day} de {schedule.startTime} a {schedule.endTime} hs</Text>
+                  <Text style={styles.infoDetailText}>Hoy de {horarioHoy.startTime} a {horarioHoy.endTime} hs</Text>
                 </View>
                 <View style={[styles.infoDetailRow, { marginTop: 4 }]}>
                   <MapPin size={14} color={colors.textSecondary} />
-                  <Text style={styles.infoDetailText}>{schedule.room}</Text>
+                  <Text style={styles.infoDetailText}>{horarioHoy.room}</Text>
                 </View>
               </View>
             </View>
           </Card>
         ) : (
           <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>No hay horarios configurados para hoy.</Text>
+            <Text style={styles.emptyStateText}>No tienes clases registradas para hoy.</Text>
           </View>
         )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Próximos Eventos</Text>
         </View>
-        {events.length > 0 && currentCursando ? (
-          events.slice(0, 3).map((event) => (
-            <Card key={event.id} style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View style={[styles.iconContainer, { backgroundColor: event.type === 'Parcial' ? colors.warning + '20' : colors.primary + '20' }]}>
-                  <Calendar size={24} color={event.type === 'Parcial' ? colors.warning : colors.primary} />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoTitle}>{event.title}</Text>
-                  <View style={styles.infoDetailRow}>
-                    <Text style={[styles.infoDetailText, { color: event.type === 'Parcial' ? colors.warning : colors.primary }]}>{currentCursando.nombre}</Text>
-                    <Text style={styles.infoDot}>•</Text>
-                    <Text style={styles.infoDetailText}>{event.date}</Text>
+        
+        {events.length > 0 ? (
+          <View>
+            {events.slice(0, mostrarTodosEventos ? events.length : 3).map((event, index) => (
+              <Card key={event.id} style={[styles.infoCard, { opacity: (!mostrarTodosEventos && index === 2 && events.length > 3) ? 0.4 : 1 }]}>
+                <View style={styles.infoRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: event.type === 'Parcial' ? colors.warning + '20' : colors.primary + '20' }]}>
+                    <Calendar size={24} color={event.type === 'Parcial' ? colors.warning : colors.primary} />
+                  </View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoTitle}>{event.title}</Text>
+                    <View style={styles.infoDetailRow}>
+                      <Text style={[styles.infoDetailText, { color: event.type === 'Parcial' ? colors.warning : colors.primary, fontFamily: fontFamily.bold }]}>{event.type}</Text>
+                      <Text style={styles.infoDot}>•</Text>
+                      <Text style={styles.infoDetailText}>{event.date}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </Card>
-          ))
+              </Card>
+            ))}
+            
+            {events.length > 3 && (
+              <TouchableOpacity style={styles.mostrarMasBtn} onPress={toggleEventos}>
+                <Text style={styles.mostrarMasText}>{mostrarTodosEventos ? 'Ocultar eventos' : `Ver ${events.length - 3} eventos más`}</Text>
+                {mostrarTodosEventos ? <ChevronUp size={16} color={colors.primary} /> : <ChevronDown size={16} color={colors.primary} />}
+              </TouchableOpacity>
+            )}
+          </View>
         ) : (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.emptyStateText}>No hay eventos próximos.</Text>
@@ -398,38 +382,40 @@ export default function AlumnoHomeScreen() {
         )}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Materias que estoy cursando</Text>
+          <Text style={styles.sectionTitle}>Materias en curso</Text>
         </View>
 
-        {currentCursando ? (
-          <SubjectCard
-            name={currentCursando.nombre}
-            code={`Nivel ${currentCursando.nivel}`}
-            status={currentCursando.status}
-            year={currentCursando.nivel}
-            semester={1}
-            credits={4}
-            hours={`${currentCursando.horas_anuales} hs`}
-            correlCursada={[]}
-            correlAprobada={[]}
-            isElectivePlaceholder={false}
-            isSeminario={false}
-            onPress={() => openModal(currentCursando)}
-            canChangeTo={['approved', 'cursada', 'in_progress', 'pending']}
-          />
+        {cursandoMaterias.length > 0 ? (
+          cursandoMaterias.map(materia => (
+            <SubjectCard
+              key={materia.id}
+              name={materia.nombre}
+              code={`Nivel ${materia.nivel}`}
+              status={materia.status}
+              year={materia.nivel}
+              semester={1}
+              credits={0}
+              hours={`${materia.horas_anuales} hs`}
+              correlCursada={[]}
+              correlAprobada={[]}
+              isElectivePlaceholder={false}
+              isSeminario={false}
+              onPress={() => router.push(`/materia/${materia.id}`)}
+              canChangeTo={[]}
+            />
+          ))
         ) : (
           <View style={styles.emptyState}>
             <BookOpen size={48} color={colors.textTertiary} />
             <Text style={styles.emptyTitle}>No estás cursando materias</Text>
-            <Text style={styles.emptySubtitle}>
-              Cambiá el estado de una materia a "Cursando" en tu Plan de Estudios para verla aquí.
-            </Text>
+            <Text style={styles.emptySubtitle}>Actualiza el estado desde tu Plan de Estudios.</Text>
           </View>
         )}
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
 
+      {/* MODAL RESTAURADO */}
       <Modal visible={showDetailModal && selectedMateria !== null} animationType="slide" transparent={true} onRequestClose={() => setShowDetailModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -691,21 +677,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: fontSize.md, color: colors.textSecondary },
+  emptyPlanContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   scrollContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.lg },
   greeting: { fontSize: fontSize.xxl, fontFamily: fontFamily.bold, color: colors.textPrimary },
-  careerText: { fontSize: fontSize.md, fontFamily: fontFamily.monoRegular, color: colors.textSecondary, marginTop: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.8 },
+  careerText: { fontSize: fontSize.md, fontFamily: fontFamily.monoRegular, color: colors.textSecondary, marginTop: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.8, paddingRight: 10 },
   logo: { width: 48, height: 48, borderRadius: borderRadius.md },
   progressGradient: { backgroundColor: colors.card, borderRadius: borderRadius.lg, overflow: 'hidden', marginBottom: spacing.lg },
   progressGradientChild: { padding: spacing.lg },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, gap: spacing.md },
   progressTitle: { fontSize: fontSize.lg, fontFamily: fontFamily.bold, color: colors.textPrimary },
   progressSubtitle: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textSecondary, marginTop: spacing.xs },
   percentageContainer: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full },
   percentage: { fontSize: fontSize.lg, fontFamily: fontFamily.bold, color: colors.white },
-  progressStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md },
+  progressStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg, flexWrap: 'wrap', gap: 10 },
   progressStat: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  progressStatText: { fontSize: fontSize.sm, fontFamily: fontFamily.medium, color: colors.textSecondary },
+  progressStatText: { fontSize: fontSize.xs, fontFamily: fontFamily.medium, color: colors.textSecondary },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm, marginTop: spacing.lg },
   sectionTitle: { fontSize: fontSize.lg, fontFamily: fontFamily.bold, color: colors.textPrimary },
   infoCard: { padding: spacing.md, marginBottom: spacing.sm, backgroundColor: colors.card },
@@ -713,15 +700,17 @@ const styles = StyleSheet.create({
   iconContainer: { backgroundColor: colors.primary + '20', padding: spacing.md, borderRadius: borderRadius.lg },
   infoContent: { flex: 1 },
   infoTitle: { fontSize: fontSize.md, fontFamily: fontFamily.bold, color: colors.textPrimary, marginBottom: spacing.xs },
-  infoDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  infoDetailText: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textSecondary, flexShrink: 1 },
+  infoDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoDetailText: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textSecondary },
   infoDot: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textTertiary, marginHorizontal: 4 },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl, backgroundColor: colors.inputBackground, borderRadius: borderRadius.lg, marginTop: spacing.sm },
   emptyTitle: { fontSize: fontSize.md, fontFamily: fontFamily.bold, color: colors.textSecondary, marginTop: spacing.md },
   emptySubtitle: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textTertiary, textAlign: 'center', marginTop: spacing.xs, paddingHorizontal: spacing.lg },
   emptyStateContainer: { padding: spacing.md, alignItems: 'center' },
   emptyStateText: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textTertiary },
-
+  mostrarMasBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.xs, marginTop: -15, backgroundColor: 'transparent' },
+  mostrarMasText: { color: colors.primary, fontFamily: fontFamily.bold, fontSize: fontSize.sm },
+  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.card, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, maxHeight: '90%', minHeight: '50%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.cardBorder },

@@ -9,6 +9,8 @@ import {
   Alert,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -273,9 +275,10 @@ export default function AdminDetallePlanScreen() {
 
       {/* Modal Unificado Intermedio (Detalle, ABM y Correlativas) */}
       <Modal visible={modalDetalleVisible} animationType="slide" transparent={true} onRequestClose={cerrarContenedorModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContentStyle}>
-            <View style={styles.modalHeader}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContentStyle}>
+              <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {vistaInternaModal === 'detalle' && 'Configuración de Materia'}
                 {vistaInternaModal === 'formulario_materia' && (materiaSeleccionada ? 'Modificar Datos' : 'Nueva Asignatura')}
@@ -417,9 +420,9 @@ export default function AdminDetallePlanScreen() {
                 </TouchableOpacity>
               </View>
             )}
-
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

@@ -106,10 +106,6 @@ export default function AdminDashboardScreen() {
               <View style={[styles.iconContainer, { backgroundColor: colors.error + '15' }]}>
                 <LogOut size={22} color={colors.error} />
               </View>
-              <View style={styles.actionTextContainer}>
-                <Text style={[styles.actionTitle, { color: colors.error }]}>Cerrar Sesión</Text>
-                <Text style={styles.actionSubtitle}>Salir del sistema de gestion de forma segura</Text>
-              </View>
             </View>
           </Card>
         </View>

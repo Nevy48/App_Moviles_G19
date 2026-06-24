@@ -1,18 +1,37 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '@/components/ui';
+import { Card, Button } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
-import { Settings, Shield } from 'lucide-react-native';
+import { Settings, Shield, LogOut } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AdminConfiguracionScreen() {
+  const { signOut } = useAuth();
+
+  const manejarCierreSesion = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro de que deseas salir del panel de administración?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Salir', 
+          style: 'destructive', 
+          onPress: async () => {
+            await signOut();
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Cabecera Principal unificada */}
         <View style={styles.header}>
           <View style={styles.iconWrapper}>
             <Settings size={32} color={colors.primary} />
@@ -20,7 +39,6 @@ export default function AdminConfiguracionScreen() {
           <Text style={styles.title}>Configuración</Text>
         </View>
 
-        {/* Tarjeta de Información de Rol */}
         <Card style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -34,7 +52,6 @@ export default function AdminConfiguracionScreen() {
           </Text>
         </Card>
 
-        {/* Tarjeta de Lista de Funcionalidades */}
         <Card style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Funciones Disponibles</Text>
           <View style={styles.functionList}>
@@ -57,7 +74,16 @@ export default function AdminConfiguracionScreen() {
           </View>
         </Card>
 
-        {/* Pie de página de versión imitando el formato del perfil del alumno */}
+        <View style={styles.contenedorSalida}>
+          <Button 
+            title="Cerrar Sesión" 
+            onPress={manejarCierreSesion}
+            style={styles.botonSalir}
+            textStyle={styles.textoBotonSalir}
+            icon={<LogOut size={20} color={colors.error} />}
+          />
+        </View>
+
         <Text style={styles.versionText}>Mi Estado Académico v1.0.0 (Admin)</Text>
       </ScrollView>
     </SafeAreaView>
@@ -65,93 +91,23 @@ export default function AdminConfiguracionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background, // Hereda el fondo oscuro/claro global
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.md, // Sincronizado con la grilla del alumno[cite: 2, 4, 5]
-    paddingBottom: spacing.xxl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    paddingTop: spacing.lg,
-  },
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.full, // Uso del token circular oficial[cite: 2, 5]
-    backgroundColor: colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontFamily: fontFamily.bold, // Corrección del bug tipográfico[cite: 2, 4, 5]
-    color: colors.textPrimary,
-  },
-  infoCard: {
-    padding: spacing.md, // Unificado con las tarjetas de información compartidas[cite: 2, 4]
-    marginBottom: spacing.md,
-    backgroundColor: colors.card,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.sm, // Transición profesional reemplazando márgenes duros[cite: 2, 4]
-  },
-  iconContainer: {
-    padding: spacing.xs,
-    borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoTitle: {
-    fontSize: fontSize.md,
-    fontFamily: fontFamily.bold, // Reemplazo de fontWeight.semibold[cite: 2, 4]
-    color: colors.textPrimary,
-  },
-  infoText: {
-    fontSize: fontSize.sm,
-    fontFamily: fontFamily.regular, // Token tipográfico correcto[cite: 2, 4, 5]
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    fontSize: fontSize.md,
-    fontFamily: fontFamily.bold, // Token tipográfico correcto[cite: 2, 4, 5]
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  functionList: {
-    gap: spacing.sm,
-  },
-  functionItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  functionBullet: {
-    fontSize: fontSize.md,
-    fontFamily: fontFamily.bold,
-    color: colors.primary,
-    marginRight: spacing.sm,
-    lineHeight: 20,
-  },
-  functionText: {
-    fontSize: fontSize.sm,
-    fontFamily: fontFamily.regular, // Token tipográfico correcto[cite: 2, 4, 5]
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 20,
-  },
-  versionText: {
-    textAlign: 'center', // Réplica exacta del footer de perfil del alumno[cite: 5]
-    fontSize: fontSize.xs,
-    fontFamily: fontFamily.regular,
-    color: colors.textTertiary,
-    marginTop: spacing.xl,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
+  header: { alignItems: 'center', marginBottom: spacing.xl, paddingTop: spacing.lg },
+  iconWrapper: { width: 64, height: 64, borderRadius: borderRadius.full, backgroundColor: colors.primary + '20', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+  title: { fontSize: fontSize.xxl, fontFamily: fontFamily.bold, color: colors.textPrimary },
+  infoCard: { padding: spacing.md, marginBottom: spacing.md, backgroundColor: colors.card },
+  infoHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
+  iconContainer: { padding: spacing.xs, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
+  infoTitle: { fontSize: fontSize.md, fontFamily: fontFamily.bold, color: colors.textPrimary },
+  infoText: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textSecondary, lineHeight: 20 },
+  sectionTitle: { fontSize: fontSize.md, fontFamily: fontFamily.bold, color: colors.textPrimary, marginBottom: spacing.md },
+  functionList: { gap: spacing.sm },
+  functionItem: { flexDirection: 'row', alignItems: 'flex-start' },
+  functionBullet: { fontSize: fontSize.md, fontFamily: fontFamily.bold, color: colors.primary, marginRight: spacing.sm, lineHeight: 20 },
+  functionText: { fontSize: fontSize.sm, fontFamily: fontFamily.regular, color: colors.textSecondary, flex: 1, lineHeight: 20 },
+  contenedorSalida: { marginTop: spacing.xl, paddingBottom: spacing.lg },
+  botonSalir: { backgroundColor: colors.error + '15', borderColor: colors.error, borderWidth: 1 },
+  textoBotonSalir: { color: colors.error },
+  versionText: { textAlign: 'center', fontSize: fontSize.xs, fontFamily: fontFamily.regular, color: colors.textTertiary, marginTop: spacing.xl },
 });

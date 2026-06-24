@@ -8,6 +8,8 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -201,55 +203,57 @@ export default function AdminPlanesScreen() {
       />
 
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={closeModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContentStyle}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingPlan ? 'Editar Plan' : 'Nuevo Plan de Estudio'}
-              </Text>
-              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
-                <X size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <Controller
-                control={control}
-                name="nombre"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Nombre de la Carrera / Plan"
-                    placeholder="Ej: Ingeniería en Sistemas"
-                    value={value}
-                    onChangeText={onChange}
-                    error={errors.nombre?.message}
-                  />
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="anio_resolucion"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Año de la Resolución Ministerial"
-                    placeholder="Ej: 2023"
-                    value={value}
-                    onChangeText={onChange}
-                    keyboardType="numeric"
-                    error={errors.anio_resolucion?.message}
-                  />
-                )}
-              />
-
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(onSubmit)}>
-                <Text style={styles.primaryButtonText}>
-                  {editingPlan ? 'Actualizar Registro' : 'Dar de Alta Plan'}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContentStyle}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingPlan ? 'Editar Plan' : 'Nuevo Plan de Estudio'}
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                  <X size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Controller
+                  control={control}
+                  name="nombre"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Nombre de la Carrera / Plan"
+                      placeholder="Ej: Ingeniería en Sistemas"
+                      value={value}
+                      onChangeText={onChange}
+                      error={errors.nombre?.message}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="anio_resolucion"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Año de la Resolución Ministerial"
+                      placeholder="Ej: 2023"
+                      value={value}
+                      onChangeText={onChange}
+                      keyboardType="numeric"
+                      error={errors.anio_resolucion?.message}
+                    />
+                  )}
+                />
+
+                <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(onSubmit)}>
+                  <Text style={styles.primaryButtonText}>
+                    {editingPlan ? 'Actualizar Registro' : 'Dar de Alta Plan'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
