@@ -10,10 +10,22 @@ export interface Perfil {
   updated_at: string;
 }
 
+// ✨ NUEVO: Tabla de Facultades/Administradores
+export interface AdminInstitucional {
+  id: string;
+  id_perfil: string;              // Referencia a Perfil con rol='admin'
+  nombre_facultad: string;        // Nombre de la facultad
+  nombre_completo?: string;       // Cached from Perfil para mostrar
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PlanEstudio {
   id: string;
   nombre: string;
   anio_resolucion: number;
+  // ✨ NUEVO: Vinculación con facultad
+  id_admin?: string;              // Referencia a AdminInstitucional
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +67,29 @@ export interface EventoAlumnoWithDetails extends EventoAlumno {
   materia_nombre?: string;
 }
 
+// ✨ NUEVO: Tipo para seguimiento de materias del alumno
+export interface ProgresoAlumno {
+  id: string;
+  id_alumno: string;
+  id_materia: string;
+  estado: 'pending' | 'in_progress' | 'cursada' | 'approved';
+  nota?: number;
+  fecha_aprobacion?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ✨ NUEVO: Tipo para suscripción a planes
+export interface SuscripcionPlan {
+  id: string;
+  id_alumno: string;
+  id_plan: string;
+  fecha_inicio: string;
+  fecha_fin?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -62,6 +97,12 @@ export interface Database {
         Row: Perfil;
         Insert: Omit<Perfil, 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Perfil, 'id' | 'created_at'>>;
+      };
+      // ✨ NUEVO
+      admins_institucionales: {
+        Row: AdminInstitucional;
+        Insert: Omit<AdminInstitucional, 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<AdminInstitucional, 'id' | 'created_at'>>;
       };
       planes_estudio: {
         Row: PlanEstudio;
@@ -82,6 +123,16 @@ export interface Database {
         Row: EventoAlumno;
         Insert: Omit<EventoAlumno, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<EventoAlumno, 'id' | 'created_at'>>;
+      };
+      progreso_alumno: {
+        Row: ProgresoAlumno;
+        Insert: Omit<ProgresoAlumno, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<ProgresoAlumno, 'id' | 'created_at'>>;
+      };
+      suscripciones_alumno: {
+        Row: SuscripcionPlan;
+        Insert: Omit<SuscripcionPlan, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<SuscripcionPlan, 'id' | 'created_at'>>;
       };
     };
     Enums: {

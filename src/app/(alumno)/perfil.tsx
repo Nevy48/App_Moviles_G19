@@ -169,20 +169,6 @@ export default function AlumnoPerfilScreen() {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Gestión Académica</Text>
-        </View>
-
-        <View style={styles.menuCard}>
-          <TouchableOpacity style={styles.menuItem} onPress={manejarBajaPlan}>
-            <View style={styles.menuItemLeft}>
-              <Trash2 size={20} color={colors.warning} />
-              <Text style={[styles.menuItemText, { color: colors.warning }]}>Cambiar de Carrera</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Cuenta</Text>
         </View>
 

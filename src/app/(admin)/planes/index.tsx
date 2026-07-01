@@ -22,6 +22,7 @@ import { Plus, Edit2, Trash2, BookOpen, X } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useAuth } from '@/context/AuthContext';
 
 const planSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -34,6 +35,7 @@ type PlanFormData = z.infer<typeof planSchema>;
 
 export default function AdminPlanesScreen() {
   const router = useRouter();
+  const { perfil } = useAuth();
   const [planes, setPlanes] = useState<PlanEstudio[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,6 +75,7 @@ export default function AdminPlanesScreen() {
     const datosPlan = {
       nombre: data.nombre,
       anio_resolucion: parseInt(data.anio_resolucion, 10),
+      id_admin: perfil?.id,
     };
 
     if (editingPlan) {

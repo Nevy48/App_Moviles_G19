@@ -1,5 +1,6 @@
 import { supabase, supabase as supabaseUntyped } from '@/lib/supabase/client';
 import { EventoAlumno, EventoAlumnoWithDetails, TipoEvento } from '@/lib/supabase/database.types';
+import { scheduleEventNotification } from './notificationsService';
 
 export interface CreateEventoData {
   id_materia?: string | null;
@@ -94,6 +95,12 @@ export const eventosService = {
       if (error) {
         console.error('Error creating evento:', error);
         return null;
+      }
+
+      try {
+        await scheduleEventNotification(evento.titulo, evento.fecha);
+      } catch (notifErr) {
+        console.error('Error al agendar notificación:', notifErr);
       }
 
       return data as EventoAlumno;

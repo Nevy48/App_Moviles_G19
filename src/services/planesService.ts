@@ -1,119 +1,162 @@
 import { supabase } from '@/lib/supabase/client';
-import { supabase as supabaseUntyped } from '@/lib/supabase/client';
-import { PlanEstudio } from '@/lib/supabase/database.types';
-
-export interface CreatePlanData {
-  nombre: string;
-  anio_resolucion: number;
-}
-
-export interface UpdatePlanData {
-  nombre?: string;
-  anio_resolucion?: number;
-}
+import { PlanEstudio, AdminInstitucional } from '@/lib/supabase/database.types';
 
 export const planesService = {
+  
+  /**
+   * Obtiene todos los administradores institucionales (Facultades)
+   * Esto devuelve la lista de facultades disponibles en el sistema
+   */
+  async getAdminsInstitucionales(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('perfiles')
+        .select('id, nombre_completo, institucion, latitud, longitud')
+        .eq('rol', 'admin'); 
+
+      if (error) {
+        console.error('Error fetching admins:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching admins:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Obtiene todos los planes de estudio de una facultad específica
+   * @param adminId ID del administrador/facultad
+   */
+  async getByAdmin(adminId: string): Promise<PlanEstudio[]> {
+    try {
+      const { data, error } = await supabase
+        .from('planes_estudio')
+        .select('*')
+        .eq('id_admin', adminId)
+        .order('nombre', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo planes por admin:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene todos los planes de estudio del sistema
+   */
   async getAll(): Promise<PlanEstudio[]> {
     try {
       const { data, error } = await supabase
         .from('planes_estudio')
         .select('*')
-        .order('anio_resolucion', { ascending: false });
+        .order('nombre', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching planes:', error);
-        return [];
-      }
-
-      return (data as PlanEstudio[]) || [];
-    } catch (err) {
-      console.error('Error fetching planes:', err);
-      return [];
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo todos los planes:', error);
+      throw error;
     }
   },
 
-  async getById(id: string): Promise<PlanEstudio | null> {
+  /**
+   * Obtiene un plan específico por ID
+   * @param planId ID del plan
+   */
+  async getById(planId: string): Promise<PlanEstudio | null> {
     try {
       const { data, error } = await supabase
         .from('planes_estudio')
         .select('*')
-        .eq('id', id)
-        .maybeSingle();
+        .eq('id', planId)
+        .single();
 
-      if (error) {
-        console.error('Error fetching plan:', error);
-        return null;
-      }
-
-      if (!data) {
-        return null;
-      }
-
-      return data as PlanEstudio;
-    } catch (err) {
-      console.error('Error fetching plan:', err);
-      return null;
+      if (error) throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error obteniendo plan por ID:', error);
+      throw error;
     }
   },
 
-  async create(plan: CreatePlanData): Promise<PlanEstudio | null> {
+  /**
+   * Crea un nuevo plan de estudio
+   */
+  async create(plan: Omit<PlanEstudio, 'id' | 'created_at' | 'updated_at'>) {
     try {
-      const { data, error } = await (supabaseUntyped as any)
+      const { data, error } = await supabase
         .from('planes_estudio')
-        .insert(plan)
+        .insert([plan])
         .select()
         .single();
 
-      if (error) {
-        console.error('Error creating plan:', error);
-        return null;
-      }
-
-      return data as PlanEstudio;
-    } catch (err) {
-      console.error('Error creating plan:', err);
-      return null;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creando plan:', error);
+      throw error;
     }
   },
 
-  async update(id: string, updates: UpdatePlanData): Promise<PlanEstudio | null> {
+  /**
+   * Actualiza un plan existente
+   */
+  async update(planId: string, updates: Partial<Omit<PlanEstudio, 'id' | 'created_at'>>) {
     try {
-      const updateData = { ...updates, updated_at: new Date().toISOString() };
-      const { data, error } = await (supabaseUntyped as any)
+      const { data, error } = await supabase
         .from('planes_estudio')
-        .update(updateData)
-        .eq('id', id)
+        .update(updates)
+        .eq('id', planId)
         .select()
         .single();
 
-      if (error) {
-        console.error('Error updating plan:', error);
-        return null;
-      }
-
-      return data as PlanEstudio;
-    } catch (err) {
-      console.error('Error updating plan:', err);
-      return null;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error actualizando plan:', error);
+      throw error;
     }
   },
 
-  async delete(id: string): Promise<boolean> {
+  /**
+   * Elimina un plan de estudio
+   */
+  async delete(planId: string) {
     try {
       const { error } = await supabase
         .from('planes_estudio')
         .delete()
-        .eq('id', id);
+        .eq('id', planId);
 
-      if (error) {
-        console.error('Error deleting plan:', error);
-        return false;
-      }
-
+      if (error) throw error;
       return true;
-    } catch (err) {
-      console.error('Error deleting plan:', err);
-      return false;
+    } catch (error) {
+      console.error('Error eliminando plan:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Busca planes por nombre (para la barra de búsqueda)
+   */
+  async buscar(termino: string): Promise<PlanEstudio[]> {
+    try {
+      const { data, error } = await supabase
+        .from('planes_estudio')
+        .select('*')
+        .ilike('nombre', `%${termino}%`)
+        .order('nombre', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error buscando planes:', error);
+      throw error;
     }
   },
 };
