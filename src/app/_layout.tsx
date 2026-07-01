@@ -4,9 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
+import { PantallaCarga } from '@/components/ui';
 import {
   Syne_400Regular,
   Syne_500Medium,
@@ -71,11 +72,8 @@ function RootLayoutNav() {
   const { isLoading } = useAuthRedirect();
 
   if (isLoading || !fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    // Aplicamos nuestro componente unificado
+    return <PantallaCarga />;
   }
 
   return (
@@ -104,12 +102,6 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.background,
   },
 });

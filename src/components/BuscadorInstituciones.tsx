@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Building, ChevronRight, BookOpen, MapPin } from 'lucide-react-native';
+import { Search, Building, ChevronRight, BookOpen, MapPin, Map as MapIcon, List } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { Card } from '@/components/ui';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize, fontFamily } from '@/constants/theme';
 import { PlanEstudio } from '@/lib/supabase/database.types';
+import MapView, { Marker, Callout } from 'react-native-maps';
 
 interface BuscadorProps {
   vistaActual: 'facultades' | 'planes_facultad';
@@ -34,21 +35,24 @@ export const BuscadorInstituciones = ({
   const [listaInstituciones, setListaInstituciones] = useState<any[]>([]);
   const [cargandoGPS, setCargandoGPS] = useState(false);
   const [gpsActivo, setGpsActivo] = useState(false);
+  
+  // --- NUEVOS ESTADOS PARA EL MAPA ---
+  const [modoMapa, setModoMapa] = useState(false);
+  const [miUbicacion, setMiUbicacion] = useState<{latitude: number, longitude: number} | null>(null);
 
-  // Sincronizamos los datos apenas llegan del backend
   useEffect(() => {
     setListaInstituciones(facultades);
   }, [facultades]);
 
   const calcularDistancia = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radio de la Tierra en km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                 Math.sin(dLon/2) * Math.sin(dLon/2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    };
+  };
 
   const obtenerUbicacionYOrdenar = async () => {
     setCargandoGPS(true);
@@ -62,14 +66,16 @@ export const BuscadorInstituciones = ({
 
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
+      
+      // Guardamos la ubicación para centrar el mapa
+      setMiUbicacion({ latitude, longitude });
 
-      // Calculamos distancia y ordenamos de más cerca a más lejos
       const facultadesMapeadas = facultades.map(f => {
         if (f.latitud && f.longitud) {
           const dist = calcularDistancia(latitude, longitude, f.latitud, f.longitud);
           return { ...f, distancia: dist };
         }
-        return { ...f, distancia: 999999 }; // Las que no tienen GPS van al fondo
+        return { ...f, distancia: 999999 };
       }).sort((a, b) => a.distancia - b.distancia);
 
       setListaInstituciones(facultadesMapeadas);
@@ -82,7 +88,6 @@ export const BuscadorInstituciones = ({
   };
 
   if (vistaActual === 'facultades') {
-    // Filtro robusto que no se rompe si vienen nulos
     const facultadesFiltradas = listaInstituciones
       .filter(f => {
         const search = busqueda.toLowerCase();
@@ -114,55 +119,96 @@ export const BuscadorInstituciones = ({
             />
           </View>
 
-          {/* Botón de Geolocalización */}
-          {!gpsActivo ? (
-            <TouchableOpacity style={styles.gpsButton} onPress={obtenerUbicacionYOrdenar} disabled={cargandoGPS}>
-              <MapPin size={16} color={colors.primary} />
-              <Text style={styles.gpsButtonText}>
-                {cargandoGPS ? 'Buscando GPS...' : 'Buscar más cercanas a mí'}
-              </Text>
-              {cargandoGPS && <ActivityIndicator size="small" color={colors.primary} style={{marginLeft: 8}}/>}
-            </TouchableOpacity>
-          ) : (
-            <View style={[styles.gpsButton, { backgroundColor: colors.success + '15' }]}>
-              <MapPin size={16} color={colors.success} />
-              <Text style={[styles.gpsButtonText, { color: colors.success }]}>Ordenadas por cercanía</Text>
-            </View>
-          )}
+          {/* --- BOTONERA: GPS Y TOGGLE DE MAPA --- */}
+          <View style={styles.actionRow}>
+            {!gpsActivo ? (
+              <TouchableOpacity style={styles.gpsButton} onPress={obtenerUbicacionYOrdenar} disabled={cargandoGPS}>
+                <MapPin size={16} color={colors.primary} />
+                <Text style={styles.gpsButtonText}>
+                  {cargandoGPS ? 'Buscando...' : 'Buscar cercanas'}
+                </Text>
+                {cargandoGPS && <ActivityIndicator size="small" color={colors.primary} style={{marginLeft: 8}}/>}
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.gpsButton, { backgroundColor: colors.success + '15' }]}>
+                <MapPin size={16} color={colors.success} />
+                <Text style={[styles.gpsButtonText, { color: colors.success }]}>Top 3 Cercanas</Text>
+              </View>
+            )}
 
+            {/* Botón para alternar Mapa/Lista */}
+            <TouchableOpacity 
+              style={styles.toggleButton} 
+              onPress={() => setModoMapa(!modoMapa)}
+            >
+              {modoMapa ? <List size={20} color={colors.primary} /> : <MapIcon size={20} color={colors.primary} />}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <FlatList
-          data={facultadesFiltradas}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No se encontraron instituciones.</Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <Card style={styles.planCard} onPress={() => verPlanesDeFacultad(item)}>
-              <View style={styles.planCardContent}>
-                <View style={styles.planIconWrapper}><Building size={24} color={colors.primary} /></View>
-                <View style={styles.planInfo}>
-                    <Text style={styles.planName}>{item.institucion || 'Institución'}</Text>
-                    <Text style={styles.planYear}>Administrador: {item.nombre_completo}</Text>
-                  {/* Etiqueta de distancia dinámica */}
-                  {item.distancia && item.distancia !== 999999 && (
-                    <Text style={styles.distanceText}>📍 a {item.distancia.toFixed(1)} km</Text>
-                  )}
-                </View>
-                <ChevronRight size={20} color={colors.textTertiary} />
+        {/* --- RENDERIZADO CONDICIONAL: MAPA O LISTA --- */}
+        {modoMapa ? (
+          <View style={styles.mapContainer}>
+            <MapView
+              style={StyleSheet.absoluteFillObject}
+              initialRegion={{
+                // Centramos en la ubicación del alumno si la tenemos, sino en La Plata por defecto
+                latitude: miUbicacion?.latitude || -34.9214,
+                longitude: miUbicacion?.longitude || -57.9545,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+              showsUserLocation={true} // Esto dibuja el punto azul de Apple Maps automáticamente
+            >
+              {facultadesFiltradas.map((f) => {
+                if (f.latitud && f.longitud) {
+                  return (
+                    <Marker
+                      key={f.id}
+                      coordinate={{ latitude: f.latitud, longitude: f.longitud }}
+                      title={f.institucion}
+                      description={f.distancia && f.distancia !== 999999 ? `A ${f.distancia.toFixed(1)} km - Toca para ver planes` : 'Toca para ver planes'}
+                      onCalloutPress={() => verPlanesDeFacultad(f)} // Acción al tocar la "nubecita"
+                    />
+                  );
+                }
+                return null;
+              })}
+            </MapView>
+          </View>
+        ) : (
+          <FlatList
+            data={facultadesFiltradas}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No se encontraron instituciones.</Text>
               </View>
-            </Card>
-          )}
-        />
+            }
+            renderItem={({ item }) => (
+              <Card style={styles.planCard} onPress={() => verPlanesDeFacultad(item)}>
+                <View style={styles.planCardContent}>
+                  <View style={styles.planIconWrapper}><Building size={24} color={colors.primary} /></View>
+                  <View style={styles.planInfo}>
+                      <Text style={styles.planName}>{item.institucion || 'Institución'}</Text>
+                      <Text style={styles.planYear}>Administrador: {item.nombre_completo}</Text>
+                    {item.distancia && item.distancia !== 999999 && (
+                      <Text style={styles.distanceText}>📍 a {item.distancia.toFixed(1)} km</Text>
+                    )}
+                  </View>
+                  <ChevronRight size={20} color={colors.textTertiary} />
+                </View>
+              </Card>
+            )}
+          />
+        )}
       </SafeAreaView>
     );
   }
 
   if (vistaActual === 'planes_facultad') {
+    // ... (El código de planes_facultad se mantiene exactamente igual)
     const planesFiltrados = planesDisponibles.filter(plan => 
       plan.nombre.toLowerCase().includes(busqueda.toLowerCase())
     );
@@ -214,8 +260,12 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBackground, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, marginTop: spacing.lg, borderWidth: 1, borderColor: colors.inputBorder },
   searchInput: { flex: 1, paddingVertical: spacing.md, marginLeft: spacing.sm, color: colors.textPrimary, fontFamily: fontFamily.regular, fontSize: fontSize.md },
   
-  gpsButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingVertical: 8, paddingHorizontal: 12, borderRadius: borderRadius.md, marginTop: spacing.md, alignSelf: 'flex-start' },
+  // --- NUEVOS ESTILOS PARA LA BOTONERA ---
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
+  gpsButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingVertical: 8, paddingHorizontal: 12, borderRadius: borderRadius.md },
   gpsButtonText: { color: colors.primary, fontFamily: fontFamily.bold, marginLeft: spacing.xs, fontSize: fontSize.sm },
+  toggleButton: { padding: spacing.sm, backgroundColor: colors.primary + '15', borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center' },
+  mapContainer: { flex: 1, marginHorizontal: spacing.md, marginBottom: spacing.md, borderRadius: borderRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder },
   
   listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
   planCard: { marginBottom: spacing.md, backgroundColor: colors.card, padding: spacing.md },

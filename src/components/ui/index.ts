@@ -4,3 +4,4 @@ export { Card } from './Card';
 export { SubjectCard } from './SubjectCard';
 export { ProgressBar } from './ProgressBar';
 export { StatsCard } from './StatsCard';
+export { PantallaCarga } from './PantallaCarga';

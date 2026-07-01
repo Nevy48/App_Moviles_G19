@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import {
   View,
   TextInput,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ViewStyle,
   TextStyle,
+  ReturnKeyTypeOptions,
+  NativeSyntheticEvent,
+  TextInputSubmitEditingEventData
 } from 'react-native';
 import { colors } from '@/constants';
 import { borderRadius, spacing, fontSize } from '@/constants/theme';
@@ -28,9 +31,14 @@ interface InputProps {
   inputStyle?: TextStyle;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  // --- NUEVAS PROPIEDADES PARA EL TECLADO ---
+  onSubmitEditing?: (e: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => void;
+  returnKeyType?: ReturnKeyTypeOptions;
+  blurOnSubmit?: boolean;
 }
 
-export const Input: React.FC<InputProps> = ({
+// Envolvemos el componente en forwardRef
+export const Input = forwardRef<TextInput, InputProps>(({
   label,
   placeholder,
   value,
@@ -46,7 +54,10 @@ export const Input: React.FC<InputProps> = ({
   inputStyle,
   leftIcon,
   rightIcon,
-}) => {
+  onSubmitEditing,
+  returnKeyType,
+  blurOnSubmit,
+}, ref) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -63,6 +74,7 @@ export const Input: React.FC<InputProps> = ({
       >
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
+          ref={ref} // <--- ESTO PERMITE PASAR EL FOCO DESDE AFUERA
           placeholder={placeholder}
           placeholderTextColor={colors.textTertiary}
           value={value}
@@ -76,6 +88,10 @@ export const Input: React.FC<InputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           selectionColor={colors.primary}
+          // --- CONECTAMOS LAS PROPIEDADES DEL TECLADO ---
+          onSubmitEditing={onSubmitEditing}
+          returnKeyType={returnKeyType}
+          blurOnSubmit={blurOnSubmit}
           style={[
             styles.input,
             multiline && styles.multiline,
@@ -100,7 +116,10 @@ export const Input: React.FC<InputProps> = ({
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
-};
+});
+
+// Es buena práctica ponerle nombre cuando usamos forwardRef
+Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
   container: {

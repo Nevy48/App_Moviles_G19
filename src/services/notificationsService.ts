@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
-// Configurar cómo se comportan las notificaciones
+// Comportamiento de la notificación cuando la app está abierta
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -9,20 +10,33 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export const scheduleEventNotification = async (titulo: string, fechaEvento: string) => {
-  // Calculamos una semana antes
-  const trigger = new Date(fechaEvento);
-  trigger.setDate(trigger.getDate() - 7);
-  trigger.setHours(12, 0, 0, 0); // 12:00 hs fija
+export const agendarRecordatorioEvento = async (tituloEvento: string, fechaEventoString: string) => {
+  try {
+    // Calculamos la fecha 7 días antes
+    const fechaEvento = new Date(fechaEventoString);
+    const fechaAviso = new Date(fechaEvento);
+    fechaAviso.setDate(fechaAviso.getDate() - 7);
 
-  if (trigger <= new Date()) return; // No agendar si la fecha ya pasó o es en menos de una semana
+    // Si faltan menos de 7 días, no agendamos nada para no mandar notificaciones en el pasado
+    if (fechaAviso <= new Date()) {
+      return null;
+    }
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "📅 ¡Recordatorio de Evento!",
-      body: `En una semana tienes: ${titulo}`,
-      sound: true,
-    },
-    trigger,
-  });
+    // Agendamos la notificación local
+    const idNotificacion = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '¡Examen a la vista! 📚',
+        body: `Falta exactamente una semana para: ${tituloEvento}. ¡Es momento de repasar!`,
+        sound: true,
+      },
+      trigger: {
+        date: fechaAviso,
+      },
+    });
+
+    return idNotificacion;
+  } catch (error) {
+    console.error('Error agendando notificación:', error);
+    return null;
+  }
 };

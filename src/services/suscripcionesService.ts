@@ -23,15 +23,16 @@ export const suscripcionesService = {
   // Vincula al alumno con un nuevo plan
   async seguirPlan(alumnoId: string, planId: string): Promise<{success: boolean, error?: string}> {
     try {
-      // Quitamos la propiedad 'activo' por si ese fue el problema en la BD
       const { error } = await (supabaseUntyped as any)
         .from('suscripciones_alumno')
         .insert({ id_alumno: alumnoId, id_plan: planId });
 
       if (error) {
-        if (error.code === '23505') return { success: true }; // Si ya estaba anotado, lo tomamos como éxito
+        if (error.code === '23505' && error.message.includes('idx_unico_alumno_plan')) {
+           return { success: true };
+        }
         console.error('Error insertando plan:', error);
-        return { success: false, error: error.message }; // Devolvemos el por qué falló
+        return { success: false, error: `Error ${error.code}: ${error.message}` };
       }
       return { success: true };
     } catch (err: any) {
@@ -39,18 +40,37 @@ export const suscripcionesService = {
     }
   },
 
-  // Elimina la suscripción
+  // Purga la vinculación y todos los datos asociados (Borrado en Cascada Completo)
   async abandonarPlan(alumnoId: string, planId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
+      // Obtenemos las materias
+      const { data: materias, error: errMaterias } = await supabase
+        .from('materias')
+        .select('id')
+        .eq('id_plan', planId);
+
+      if (materias && materias.length > 0) {
+        const materiaIds = materias.map(m => m.id);
+        
+        // Borramos el progreso
+        const { error: errProgreso } = await supabase
+          .from('progreso_alumno')
+          .delete()
+          .eq('id_alumno', alumnoId)
+          .in('id_materia', materiaIds);
+
+        // Borramos los eventos asociados (Exámenes, TPs, etc.)
+        const { error: errEventos } = await supabase
+          .from('eventos_alumno')
+          .delete()
+          .eq('id_alumno', alumnoId)
+          .in('id_materia', materiaIds);
+      }
+
+      // Borramos la suscripción principal
+      const { error: errSuscripcion } = await supabase
         .from('suscripciones_alumno')
         .delete()
         .eq('id_alumno', alumnoId)
         .eq('id_plan', planId);
-
-      return !error;
-    } catch (err) {
-      return false;
-    }
   }
 };

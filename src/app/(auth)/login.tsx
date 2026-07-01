@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -27,6 +27,9 @@ export default function LoginScreen() {
   const router = useRouter();
   const { signIn, isLoading } = useAuth();
   const [mostrarPassword, setMostrarPassword] = useState(false);
+  
+  // Referencia para saltar del email a la contraseña
+  const passwordRef = useRef<TextInput>(null);
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormularioData>({
     resolver: zodResolver(esquemaLogin),
@@ -53,9 +56,13 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} scrollEnabled={false} bounces={false}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent} 
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardShouldPersistTaps="handled" // <--- SOLUCIONA LOS DOBLES TOQUES
+          >
             
-            {/* Header unificado en fila: Logo izquierda, Marca derecha */}
             <View style={styles.headerRow}>
               <Image source={{ uri: urlLogoInstitucional }} style={styles.logo} contentFit="contain" cachePolicy="memory-disk" />
               <View style={styles.titleColumn}>
@@ -66,7 +73,6 @@ export default function LoginScreen() {
             
             <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
 
-            {/* Caja de Login encapsulada idéntica al componente var(--panel) de la web */}
             <View style={styles.loginBox}>
               <Controller
                 control={control}
@@ -81,6 +87,10 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     leftIcon={<Mail size={20} color={colors.textTertiary} />}
                     error={errors.email?.message}
+                    // Configuración de teclado para saltar al siguiente
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => passwordRef.current?.focus()}
                   />
                 )}
               />
@@ -90,6 +100,7 @@ export default function LoginScreen() {
                 name="password"
                 render={({ field: { onChange, value } }) => (
                   <Input
+                    ref={passwordRef} // Recibe el foco desde el email
                     label="Contraseña"
                     placeholder="••••••••"
                     value={value}
@@ -102,6 +113,9 @@ export default function LoginScreen() {
                       </TouchableOpacity>
                     }
                     error={errors.password?.message}
+                    // Al darle enter en la contraseña, intenta iniciar sesión de una
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit(alEnviarFormulario)}
                   />
                 )}
               />
@@ -114,7 +128,6 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Botón de Google refinado con fondo blanco y tipografía oscura */}
               <TouchableOpacity style={styles.googleButtonWhite} onPress={iniciarSesionGoogle}>
                 <Image source={{ uri: urlIconoGoogle }} style={styles.googleIcon} contentFit="contain" cachePolicy="memory-disk" />
                 <Text style={styles.googleButtonText}>Continuar con Google</Text>
@@ -138,24 +151,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingVertical: spacing.xxl, justifyContent: 'center' },
+  scrollContent: { 
+    flexGrow: 1, 
+    paddingHorizontal: spacing.xl, 
+    paddingBottom: spacing.xxl, 
+    paddingTop: Platform.OS === 'ios' ? 120 : 80 // <--- Empuja el contenido hacia el centro estáticamente
+  },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, marginBottom: spacing.sm },
   logo: { width: 55, height: 55 },
   titleColumn: { flexDirection: 'column', justifyContent: 'center' },
-  // Buscar estas dos propiedades dentro de styles y modificarlas así:
-  titleTextBase: { 
-    fontSize: fontSize.xxl, 
-    fontFamily: 'Syne-ExtraBold', // <-- Reemplazá aquí con el nombre exacto de tu fuente cargada
-    color: colors.textPrimary, 
-    letterSpacing: 0.5 
-  },
-  titleTextResaltado: { 
-    fontSize: fontSize.xxl, 
-    fontFamily: 'Syne-ExtraBold', // <-- Reemplazá aquí con el nombre exacto de tu fuente cargada
-    color: colors.primary, 
-    letterSpacing: 0.5, 
-    marginTop: -4 
-  },
+  titleTextBase: { fontSize: fontSize.xxl, fontFamily: 'Syne-ExtraBold', color: colors.textPrimary, letterSpacing: 0.5 },
+  titleTextResaltado: { fontSize: fontSize.xxl, fontFamily: 'Syne-ExtraBold', color: colors.primary, letterSpacing: 0.5, marginTop: -4 },
   subtitle: { fontSize: fontSize.md, fontFamily: fontFamily.regular, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, opacity: 0.9 },
   loginBox: { backgroundColor: colors.card, borderTransform: 'none', borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 20, padding: spacing.lg, width: '100%', maxWidth: 400, alignSelf: 'center', gap: spacing.xs },
   submitButton: { marginTop: spacing.md, marginBottom: spacing.sm },
